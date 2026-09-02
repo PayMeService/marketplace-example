@@ -1,0 +1,84 @@
+name: marketplace-example-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: marketplace-example-postgres-dev
+    environment:
+      POSTGRES_DB: ${DB_NAME:-marketplace-example}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${DB_HOST_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-marketplace-example}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [marketplace-example]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: marketplace-example-backend-dev
+    env_file: [.env]
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      API_PREFIX: api
+      CORS_ORIGIN: http://localhost:${FRONTEND_HOST_PORT:-5173}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-marketplace-example}
+      DB_SYNCHRONIZE: "true"
+      DB_LOGGING: "true"
+    ports:
+      - "${BACKEND_HOST_PORT:-3000}:3000"
+      - "${BACKEND_DEBUG_HOST_PORT:-9229}:9229"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/test:/app/test
+      - ./backend/tsconfig.json:/app/tsconfig.json
+      - ./backend/tsconfig.build.json:/app/tsconfig.build.json
+      - ./backend/nest-cli.json:/app/nest-cli.json
+      - ./backend/package.json:/app/package.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [marketplace-example]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: marketplace-example-frontend-dev
+    environment:
+      VITE_API_URL: /api
+      VITE_API_PROXY_TARGET: http://backend:3000
+    ports:
+      - "${FRONTEND_HOST_PORT:-5173}:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
+      - ./frontend/tsconfig.node.json:/app/tsconfig.node.json
+      - ./frontend/package.json:/app/package.json
+    depends_on:
+      - backend
+    networks: [marketplace-example]
+
+volumes:
+  postgres_data_dev:
+
+networks:
+  marketplace-example:
+    driver: bridge

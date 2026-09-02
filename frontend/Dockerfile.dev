@@ -1,0 +1,11 @@
+# syntax=docker/dockerfile:1.7
+FROM node:20-alpine
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm config set store-dir /pnpm/store && \
+    pnpm install --frozen-lockfile
+COPY . .
+EXPOSE 5173
+CMD ["pnpm", "run", "dev", "--", "--host", "0.0.0.0"]

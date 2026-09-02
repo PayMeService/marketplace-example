@@ -1,0 +1,76 @@
+name: marketplace-example
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: marketplace-example-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-marketplace-example}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${DB_HOST_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-marketplace-example}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [marketplace-example]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: marketplace-example-backend
+    env_file: [.env]
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      API_PREFIX: api
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-marketplace-example}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [marketplace-example]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    container_name: marketplace-example-frontend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks: [marketplace-example]
+
+  adminer:
+    image: adminer:latest
+    container_name: marketplace-example-adminer
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks: [marketplace-example]
+
+volumes:
+  postgres_data:
+
+networks:
+  marketplace-example:
+    driver: bridge
