@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+/* PayMe's Hosted Fields are cross-origin iframes we mount into our own form.
+ * They size themselves to their container, so the container needs an explicit
+ * height — an iframe with no intrinsic content height collapses to nothing and
+ * the field looks like it failed to load. */
+#pm-card-number iframe,
+#pm-card-expiry iframe,
+#pm-card-cvv iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}

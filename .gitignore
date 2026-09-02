@@ -28,3 +28,6 @@ pnpm-debug.log*
 # Misc
 *.tsbuildinfo
 .cache/
+
+# PayMe docs cache, if fetched into the repo
+docs/payme-api/

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "payme-docs": {
+      "source": "PayMeService/payme-baseline",
+      "sourceType": "github",
+      "skillPath": "skills/payme-docs/SKILL.md",
+      "computedHash": "4e74b0b5463d7e6b1a31ec60e003cbae56eeafc597899278f2996bd3d2c4e9e6"
+    }
+  }
+}

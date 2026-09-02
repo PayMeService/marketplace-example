@@ -31,6 +31,11 @@ services:
       PORT: 3000
       API_PREFIX: api
       CORS_ORIGIN: http://localhost:${FRONTEND_HOST_PORT:-5173}
+      # As PayMe's servers reach the API (callbacks). Point at a tunnel to
+      # receive real callbacks; see .env.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+      # As the buyer's browser reaches the SPA (return urls).
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:5173}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USERNAME: ${DB_USERNAME:-postgres}

@@ -36,6 +36,11 @@ services:
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_NAME: ${DB_NAME:-marketplace-example}
+      # In prod nginx serves the SPA and proxies /api on one origin, so PayMe's
+      # callbacks and the buyer's return urls share a base URL. Set both to your
+      # real https origin — callbacks must be publicly reachable.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-${PUBLIC_BASE_URL}}
     depends_on:
       postgres:
         condition: service_healthy
