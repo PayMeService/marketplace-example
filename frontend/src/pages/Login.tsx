@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth-context';
-import { Button, Card, ErrorBanner, Field, Input } from '../components/ui';
+import { Button, ErrorBanner, Field, Input } from '../components/ui';
 
 export function Login() {
   const { login } = useAuth();
@@ -26,39 +26,44 @@ export function Login() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
-      <Card title="Sign in">
-        <form onSubmit={submit} className="space-y-4">
-          <ErrorBanner error={error} />
-          <Field label="Email">
-            <Input
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </Field>
-          <Field label="Password">
-            <Input
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </Field>
-          <Button type="submit" loading={busy} className="w-full">
-            Sign in
-          </Button>
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-            No account?{' '}
-            <Link to="/register" className="text-indigo-600 hover:underline">
-              Create one
-            </Link>
-          </p>
-        </form>
-      </Card>
+    /* No sheet around this one. A four-field form on the ledger needs a rule to
+       sit on, not a box to sit in. */
+    <div className="mx-auto max-w-[22rem] py-6">
+      <h1 className="font-serif text-[2rem] leading-tight tracking-[-0.015em] text-ink">
+        Sign in
+      </h1>
+      <hr className="mt-4 mb-6 border-0 border-t border-rule-strong" />
+
+      <form onSubmit={submit} className="space-y-5">
+        <ErrorBanner error={error} />
+        <Field label="Email">
+          <Input
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Field>
+        <Field label="Password">
+          <Input
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </Field>
+        <Button type="submit" loading={busy} className="w-full">
+          Sign in
+        </Button>
+        <p className="text-center text-[13px] text-ink-soft">
+          No account?{' '}
+          <Link to="/register" className="text-pen underline underline-offset-2">
+            Create one
+          </Link>
+        </p>
+      </form>
     </div>
   );
 }

@@ -2,16 +2,19 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { get, put } from '../lib/api';
 import type { PayMeSettings } from '../lib/types';
 import {
-  Badge,
   Button,
-  Card,
   Code,
   ErrorBanner,
   Field,
+  Flash,
   Input,
   Note,
+  Page,
   Select,
+  Sheet,
   Spinner,
+  Spread,
+  Stamp,
 } from '../components/ui';
 
 /**
@@ -84,125 +87,139 @@ export function AdminSettings() {
     }
   }
 
-  if (!settings && !error) return <Spinner />;
+  if (!settings && !error) return <Spinner label="Loading settings" />;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">PayMe settings</h1>
-        <p className="mt-1 text-slate-600 dark:text-slate-400">
-          Credentials for the partner account this marketplace runs on. Seeded
-          from the environment on first boot; changes here take effect
-          immediately, without a redeploy.
-        </p>
-      </div>
+    <Page
+      title="PayMe settings"
+      lede="Credentials for the partner account this marketplace runs on. Seeded from the environment on first boot; changes here take effect immediately, without a redeploy."
+      rail
+    >
+      <Spread
+        aside={
+          <>
+            <Note title="Two credentials, opposite jobs">
+              <p>
+                The{' '}
+                <strong className="font-semibold text-ink">client key</strong>{' '}
+                goes to PayMe on every partner-scoped call. The{' '}
+                <strong className="font-semibold text-ink">client secret</strong>{' '}
+                is never transmitted anywhere — its only job is to recompute the
+                md5 signature on callbacks arriving here.
+              </p>
+            </Note>
 
-      <Card title="Credentials">
-        <form onSubmit={submit} className="space-y-5">
-          <ErrorBanner error={error} />
-          {saved && (
-            <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
-              Saved. Subsequent PayMe calls use these values.
-            </div>
-          )}
+            {!settings?.clientSecretConfigured && (
+              <Note tone="warning" title="Callbacks cannot be verified">
+                <p>
+                  With no secret set, every signature check returns{' '}
+                  <Code>unverifiable</Code> and the callback is recorded but{' '}
+                  <strong className="font-semibold text-ink">not applied</strong>
+                  . Refusing to act is the safe failure mode. Ask your PayMe
+                  account manager for the partner secret —{' '}
+                  <Code>merchant_password</Code> on their side.
+                </p>
+              </Note>
+            )}
+          </>
+        }
+      >
+        <div className="max-w-[38rem] space-y-6">
+        <Sheet title="Credentials">
+          <form onSubmit={submit} className="space-y-5">
+            <ErrorBanner error={error} />
+            {saved && <Flash>Saved. Subsequent PayMe calls use these values.</Flash>}
 
-          <Field
-            label="Environment"
-            hint={`API base: ${settings?.apiBaseUrl ?? ''}`}
-          >
-            <Select
-              value={form.environment}
-              onChange={(e) => setForm({ ...form, environment: e.target.value })}
+            <Field label="Environment" hint={`API base: ${settings?.apiBaseUrl ?? ''}`}>
+              <Select
+                value={form.environment}
+                onChange={(e) => setForm({ ...form, environment: e.target.value })}
+              >
+                <option value="sandbox">sandbox — https://sandbox.payme.io/api/</option>
+                <option value="production">production — https://live.payme.io/api/</option>
+              </Select>
+            </Field>
+
+            <Field
+              label="Client key (Partner Key)"
+              hint="Sent to PayMe as payme_client_key, and as the PayMe-Partner-Key header on the REST-shaped endpoints."
             >
-              <option value="sandbox">sandbox — https://sandbox.payme.io/api/</option>
-              <option value="production">production — https://live.payme.io/api/</option>
-            </Select>
-          </Field>
-
-          <Field
-            label="Client key (Partner Key)"
-            hint="Sent to PayMe as payme_client_key, and as the PayMe-Partner-Key header on the REST-shaped endpoints."
-          >
-            <Input
-              value={form.clientKey}
-              onChange={(e) => setForm({ ...form, clientKey: e.target.value })}
-              placeholder="newpartners_xxxxxxxx"
-            />
-          </Field>
-
-          <Field
-            label="Client secret"
-            hint="Never transmitted to PayMe. Used only to verify the md5 signature on incoming callbacks."
-          >
-            <div className="flex items-center gap-3">
               <Input
-                type="password"
-                autoComplete="off"
-                value={form.clientSecret}
-                onChange={(e) => setForm({ ...form, clientSecret: e.target.value })}
-                placeholder={
-                  settings?.clientSecretConfigured
-                    ? 'configured — leave blank to keep it'
-                    : 'not set'
-                }
+                value={form.clientKey}
+                onChange={(e) => setForm({ ...form, clientKey: e.target.value })}
+                placeholder="newpartners_xxxxxxxx"
               />
-              <Badge tone={settings?.clientSecretConfigured ? 'success' : 'danger'}>
-                {settings?.clientSecretConfigured ? 'set' : 'missing'}
-              </Badge>
-            </div>
-          </Field>
+            </Field>
 
-          <Field
-            label="Marketplace MPL"
-            hint="Your own API identifier. Used by partner-scoped calls such as POST /sellers/{mpl}/tokens — not the same thing as a seller's MPL."
-          >
-            <Input
-              value={form.marketplaceMpl}
-              onChange={(e) => setForm({ ...form, marketplaceMpl: e.target.value })}
-              placeholder="MPL17838-…"
-            />
-          </Field>
+            <Field
+              label="Client secret"
+              hint="Never transmitted to PayMe. Used only to verify the md5 signature on incoming callbacks."
+            >
+              <div className="flex items-center gap-3">
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  value={form.clientSecret}
+                  onChange={(e) => setForm({ ...form, clientSecret: e.target.value })}
+                  placeholder={
+                    settings?.clientSecretConfigured
+                      ? 'configured — leave blank to keep it'
+                      : 'not set'
+                  }
+                />
+                <Stamp tone={settings?.clientSecretConfigured ? 'success' : 'danger'}>
+                  {settings?.clientSecretConfigured ? 'set' : 'missing'}
+                </Stamp>
+              </div>
+            </Field>
 
-          <Field
-            label="Public base URL"
-            hint="How PayMe's servers reach this app. Callback and return URLs are built from it."
-          >
-            <Input
-              value={form.publicBaseUrl}
-              onChange={(e) => setForm({ ...form, publicBaseUrl: e.target.value })}
-              placeholder="https://your-tunnel.trycloudflare.com"
-            />
-          </Field>
+            <Field
+              label="Marketplace MPL"
+              hint="Your own API identifier, used by partner-scoped calls such as POST /sellers/{mpl}/tokens. Not the same thing as a seller’s MPL."
+            >
+              <Input
+                value={form.marketplaceMpl}
+                onChange={(e) => setForm({ ...form, marketplaceMpl: e.target.value })}
+                placeholder="MPL17838-…"
+              />
+            </Field>
 
-          <Button type="submit" loading={busy}>
-            Save
-          </Button>
-        </form>
-      </Card>
+            <Field
+              label="Public base URL"
+              hint="How PayMe’s servers reach this app. Callback and return URLs are built from it."
+            >
+              <Input
+                value={form.publicBaseUrl}
+                onChange={(e) => setForm({ ...form, publicBaseUrl: e.target.value })}
+                placeholder="https://your-tunnel.trycloudflare.com"
+              />
+            </Field>
 
-      {!settings?.clientSecretConfigured && (
-        <Note tone="warning" title="Callbacks cannot be verified without the secret">
-          <p>
-            With no secret configured, every signature check returns{' '}
-            <Code>unverifiable</Code> and the callback is recorded but{' '}
-            <strong>not applied</strong> — refusing to act is the safe failure
-            mode. Ask your PayMe account manager for the partner secret
-            (<Code>merchant_password</Code> on their side).
-          </p>
-        </Note>
-      )}
+            <Button type="submit" loading={busy}>
+              Save changes
+            </Button>
+          </form>
+        </Sheet>
 
-      {form.environment === 'production' && (
-        <Note tone="warning" title="Production checklist">
-          <ul className="ml-4 list-disc space-y-1">
-            <li>Client secret set, and stored in a secrets manager rather than a database column.</li>
-            <li><Code>PUBLIC_BASE_URL</Code> on real HTTPS, not a tunnel.</li>
-            <li>The callback simulator disabled — it refuses to run in production, but delete the route.</li>
-            <li><Code>DB_SYNCHRONIZE=false</Code>, with TypeORM migrations instead.</li>
-            <li><Code>testMode: false</Code> in the Hosted Fields initialisation.</li>
-          </ul>
-        </Note>
-      )}
-    </div>
+        {form.environment === 'production' && (
+          <Sheet title="Before this goes live">
+            <ul className="space-y-2.5 text-[13px] leading-relaxed text-ink-soft">
+              {[
+                'Client secret set, and stored in a secrets manager rather than a database column.',
+                'PUBLIC_BASE_URL on real HTTPS, not a tunnel.',
+                'The callback simulator deleted — it refuses to run in production, but delete the route anyway.',
+                'DB_SYNCHRONIZE=false, with TypeORM migrations instead.',
+                'testMode: false in the Hosted Fields initialisation.',
+              ].map((item) => (
+                <li key={item} className="border-t border-rule pt-2.5 first:border-0 first:pt-0">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </Sheet>
+          )}
+        </div>
+      </Spread>
+    </Page>
   );
 }

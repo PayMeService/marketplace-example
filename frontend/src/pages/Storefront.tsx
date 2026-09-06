@@ -1,132 +1,157 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { get } from '../lib/api';
-import { formatMoney } from '../lib/money';
+import { useLoader } from '../lib/useLoader';
 import { useAuth } from '../lib/auth-context';
 import type { Product } from '../lib/types';
-import { Card, EmptyState, ErrorBanner, Note, Spinner, Code } from '../components/ui';
+import { MoneyFlow } from '../components/MoneyFlow';
+import {
+  Code,
+  EmptyState,
+  ErrorBanner,
+  Money,
+  Note,
+  Rule,
+  Spinner,
+} from '../components/ui';
 
-/** The landing page: what is for sale, and a map of the integration. */
+/** Four ways into the integration, each named by the call it starts from. */
+const ENTRY_POINTS = [
+  {
+    to: '/sell',
+    title: 'Onboard a seller',
+    body: 'One call opens a PayMe account and returns an MPL, a one-time secret and a public key. Approval and balances are read back from get-sellers.',
+    call: 'create-seller',
+  },
+  {
+    to: '/checkout',
+    title: 'Three checkouts',
+    body: 'PayMe’s hosted page in an iframe, Hosted Fields on your own domain, or a server-to-server charge against a saved token.',
+    call: 'generate-sale',
+  },
+  {
+    to: '/sales',
+    title: 'Authorize, then capture',
+    body: 'Reserve the funds now and settle when you ship. The hold lasts 168 hours and capture happens once, fully or partially.',
+    call: 'capture-sale',
+  },
+  {
+    to: '/admin/callbacks',
+    title: 'Signed callbacks',
+    body: 'Every notification is checked against an md5 of key, secret, transaction and entity before it is allowed to change anything.',
+    call: 'payme_signature',
+  },
+];
+
 export function Storefront() {
   const { user } = useAuth();
-  const [products, setProducts] = useState<Product[] | null>(null);
-  const [error, setError] = useState<unknown>(null);
-
-  useEffect(() => {
-    get<Product[]>('/products').then(setProducts).catch(setError);
-  }, []);
+  const { data: products, error, loading } = useLoader(() => get<Product[]>('/products'));
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-800 dark:bg-slate-900">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          A marketplace, wired end to end to PayMe
+    <div className="space-y-14">
+      <section>
+        <h1 className="max-w-[18ch] font-serif text-[clamp(2.4rem,5vw,3.6rem)] leading-[1.02] tracking-[-0.02em] text-ink">
+          One payment, two destinations
         </h1>
-        <p className="mt-3 max-w-3xl text-slate-600 dark:text-slate-400">
-          Users register and list products. A user who wants to get paid opens a
-          PayMe seller account through <Code>create-seller</Code> and gets a{' '}
-          <Code>seller_payme_id</Code> (an MPL). From then on every payment is
-          routed to that seller's wallet, with the marketplace taking a{' '}
-          <Code>market_fee</Code> off the top.
+        <p className="mt-5 max-w-[64ch] text-[16px] leading-[1.6] text-ink-soft">
+          Anyone can list a product here. Anyone who wants to be paid for one
+          opens a PayMe seller account and gets an <Code>seller_payme_id</Code>{' '}
+          of their own — an MPL. From then on every charge is routed to that
+          seller&#8217;s wallet, with the marketplace keeping a{' '}
+          <Code>market_fee</Code> off the top. This app is that integration, and
+          it names every call it makes as it makes it.
         </p>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            {
-              title: 'Onboard sellers',
-              body: 'create-seller with a plan, store the MPL, secret and public key. Approval state and balances come from get-sellers.',
-              to: '/sell',
-            },
-            {
-              title: 'Three checkouts',
-              body: 'PayMe’s hosted page in an iframe, Hosted Fields on your own domain, or pay-sale server-to-server against a saved token.',
-              to: '/checkout',
-            },
-            {
-              title: 'Authorize, then capture',
-              body: 'Reserve funds with sale_type=authorize, settle with capture-sale when you ship. 168 hours to decide.',
-              to: '/sales',
-            },
-            {
-              title: 'Signed callbacks',
-              body: 'Every notification is checked against an md5 of key + secret + transaction + entity before it changes anything.',
-              to: '/admin/callbacks',
-            },
-          ].map((item) => (
+        <div className="mt-10">
+          <MoneyFlow />
+        </div>
+
+        <div className="mt-12 grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
+          {ENTRY_POINTS.map((entry) => (
             <Link
-              key={item.title}
-              to={item.to}
-              className="rounded-lg border border-slate-200 p-4 transition hover:border-indigo-400 hover:bg-indigo-50/40 dark:border-slate-800 dark:hover:border-indigo-600 dark:hover:bg-indigo-950/20"
+              key={entry.to}
+              to={entry.to}
+              className="group border-t-2 border-rule-strong pt-3 transition-colors hover:border-pen"
             >
-              <p className="text-sm font-semibold">{item.title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                {item.body}
+              <p className="font-serif text-[16px] leading-snug text-ink">{entry.title}</p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
+                {entry.body}
+              </p>
+              <p className="mt-2.5 font-mono text-[10.5px] text-ink-faint transition-colors group-hover:text-pen">
+                {entry.call}
               </p>
             </Link>
           ))}
         </div>
 
         {!user && (
-          <Note title="Start here">
-            <p>
-              Create an account, list a product, then open a seller on the{' '}
-              <Link to="/sell" className="underline">
-                Sell with us
-              </Link>{' '}
-              page. In sandbox you can use social ID <Code>9999999999</Code>,
-              bank <Code>54</Code>, branch <Code>123</Code>, account{' '}
-              <Code>123456</Code>.
-            </p>
-          </Note>
+          <div className="mt-10 max-w-[62ch]">
+            <Note title="Start here">
+              <p>
+                Create an account, list a product, then open a seller from{' '}
+                <Link to="/sell" className="text-pen underline underline-offset-2">
+                  Sell with us
+                </Link>
+                . PayMe&#8217;s sandbox accepts social ID <Code>9999999999</Code>,
+                bank <Code>54</Code>, branch <Code>123</Code>, account{' '}
+                <Code>123456</Code>.
+              </p>
+            </Note>
+          </div>
         )}
       </section>
 
-      <Card
-        title="On the marketplace"
-        description="Every product listed by every user. Click one to buy it — the payment is routed to whoever listed it."
-      >
+      <section className="space-y-5">
+        <Rule
+          label="On the marketplace"
+          hint={products ? `${products.length} listed` : undefined}
+        />
+        <p className="max-w-[62ch] text-[14px] leading-relaxed text-ink-soft">
+          Every product listed by every user. Open one to buy it — the payment is
+          routed to whoever listed it, never to the marketplace.
+        </p>
+
         <ErrorBanner error={error} />
-        {!products && !error && <Spinner />}
+        {loading && <Spinner label="Loading listings" />}
+
         {products && products.length === 0 && (
           <EmptyState title="Nothing listed yet">
-            <Link to="/products" className="text-indigo-600 hover:underline">
+            <Link to="/products" className="text-pen underline underline-offset-2">
               List the first product
-            </Link>
+            </Link>{' '}
+            and it appears here for every visitor.
           </EmptyState>
         )}
+
         {products && products.length > 0 && (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
               <li key={product.id}>
                 <Link
                   to={`/buy/${product.id}`}
-                  className="flex h-full flex-col rounded-lg border border-slate-200 p-4 transition hover:border-indigo-400 hover:shadow-sm dark:border-slate-800 dark:hover:border-indigo-600"
+                  className="flex h-full flex-col rounded-[3px] border border-rule bg-paper p-4 transition-colors hover:border-pen"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-medium">{product.name}</h3>
-                    <span className="whitespace-nowrap font-mono text-sm">
-                      {formatMoney(product.priceMinor, product.currency)}
-                    </span>
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 className="font-serif text-[17px] leading-snug text-ink">
+                      {product.name}
+                    </h3>
+                    <Money minor={product.priceMinor} currency={product.currency} />
                   </div>
                   {product.description && (
-                    <p className="mt-1 line-clamp-3 text-sm text-slate-500 dark:text-slate-400">
+                    <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-ink-soft">
                       {product.description}
                     </p>
                   )}
-                  <div className="mt-auto flex items-center justify-between pt-3">
-                    {product.seller && (
-                      <span className="text-xs text-slate-400">by {product.seller}</span>
-                    )}
-                    <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
-                      Buy →
-                    </span>
-                  </div>
+                  {product.seller && (
+                    <p className="mt-auto pt-4 text-[12px] text-ink-faint">
+                      Sold by {product.seller}
+                    </p>
+                  )}
                 </Link>
               </li>
             ))}
           </ul>
         )}
-      </Card>
+      </section>
     </div>
   );
 }

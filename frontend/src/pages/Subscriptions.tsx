@@ -1,21 +1,26 @@
 import { useState, type FormEvent } from 'react';
 import { get, patch, post } from '../lib/api';
 import { useLoader } from '../lib/useLoader';
-import { CURRENCIES, formatMoney, toMinorUnits } from '../lib/money';
+import { CURRENCIES, toMinorUnits } from '../lib/money';
 import type { SavedToken, Subscription } from '../lib/types';
 import {
   Button,
-  Card,
   Code,
   EmptyState,
   ErrorBanner,
   Field,
   Input,
+  Ledger,
+  Money,
   Note,
+  Page,
+  Rule,
   Select,
+  Sheet,
   Spinner,
-  TableWrap,
+  Spread,
   Td,
+  TdPrimary,
   Th,
 } from '../components/ui';
 import { SubscriptionStatusBadge } from '../components/StatusBadge';
@@ -25,6 +30,21 @@ const ITERATION_TYPES = [
   { value: 2, label: 'Weekly' },
   { value: 3, label: 'Monthly' },
   { value: 4, label: 'Annually' },
+];
+
+/**
+ * PayMe's subscription statuses. The numbers are PayMe's own codes, not an
+ * ordering we invented — 76 sits out of sequence because it is a distinct
+ * failure mode, not the seventy-sixth state.
+ */
+const LIFECYCLE = [
+  ['1', 'initial', 'Created. Nothing charged — the buyer has not paid yet.'],
+  ['2', 'active', 'First iteration succeeded. PayMe charges the rest on schedule.'],
+  ['3', 'paused', 'Stopped, reversibly. Resume it whenever.'],
+  ['4', 'failed', 'PayMe gave up on this subscription.'],
+  ['76', 'retrying', 'A charge failed and PayMe will try again by itself.'],
+  ['5', 'cancelled', 'Terminal. Cannot be resumed.'],
+  ['6', 'completed', 'Every iteration ran.'],
 ];
 
 /**
@@ -109,31 +129,36 @@ export function Subscriptions() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Subscriptions</h1>
-        <p className="mt-1 max-w-3xl text-slate-600 dark:text-slate-400">
-          <Code>generate-subscription</Code> creates the schedule; PayMe charges
-          each iteration and tells you about it by callback.
-        </p>
-      </div>
-
+    <Page
+      title="Subscriptions"
+      lede={
+        <>
+          <Code>generate-subscription</Code> creates the schedule. From then on
+          PayMe charges each iteration itself and tells you about it by callback
+          — there is no endpoint for charging the next one.
+        </>
+      }
+      rail
+    >
       <ErrorBanner error={error} />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
-        <Card title="Active and past subscriptions">
-          {!subscriptions && <Spinner />}
-          {subscriptions && subscriptions.length === 0 && (
-            <EmptyState title="No subscriptions yet">
-              Create one on the right.
-            </EmptyState>
-          )}
-          {subscriptions && subscriptions.length > 0 && (
-            <TableWrap>
+      <Spread aside={null}>
+        {!subscriptions && <Spinner label="Loading subscriptions" />}
+
+        {subscriptions && subscriptions.length === 0 && (
+          <EmptyState title="No subscriptions yet">
+            Create one below. With a saved card it activates immediately;
+            without one PayMe returns a page for the buyer to fill in.
+          </EmptyState>
+        )}
+
+        {subscriptions && subscriptions.length > 0 && (
+          <Sheet flush>
+            <Ledger>
               <thead>
                 <tr>
                   <Th>Plan</Th>
-                  <Th>Price</Th>
+                  <Th align="right">Per iteration</Th>
                   <Th>Cycle</Th>
                   <Th>Status</Th>
                   <Th>Next charge</Th>
@@ -145,51 +170,55 @@ export function Subscriptions() {
                   const busy = busyId === subscription.id;
                   return (
                     <tr key={subscription.id}>
-                      <Td>
-                        <p className="font-medium text-slate-900 dark:text-slate-100">
-                          {subscription.description}
-                        </p>
-                        <p className="mt-0.5 break-all font-mono text-[11px] text-slate-400">
-                          {subscription.paymeSubId ?? 'not registered'}
-                        </p>
+                      <TdPrimary
+                        name={subscription.description}
+                        id={subscription.paymeSubId ?? 'not registered with PayMe'}
+                      >
                         {subscription.buyerCardMask && (
-                          <p className="mt-0.5 font-mono text-[11px] text-slate-400">
+                          <p className="mt-0.5 font-mono text-[10px] text-ink-faint">
                             {subscription.buyerCardMask}
                           </p>
                         )}
+                      </TdPrimary>
+
+                      <Td align="right">
+                        <Money
+                          minor={subscription.priceMinor}
+                          currency={subscription.currency}
+                        />
                       </Td>
-                      <Td>
-                        <span className="tabular-nums">
-                          {formatMoney(subscription.priceMinor, subscription.currency)}
-                        </span>
-                        <span className="block text-[11px] text-slate-400">
-                          per iteration
-                        </span>
-                      </Td>
+
                       <Td>
                         {subscription.iterationTypeLabel}
-                        <span className="block text-[11px] text-slate-400">
+                        <span className="mt-0.5 block text-[11px] text-ink-faint">
                           {subscription.iterations === -1
                             ? 'until cancelled'
-                            : `${subscription.iterationsCompleted}/${subscription.iterations} done`}
+                            : `${subscription.iterationsCompleted} of ${subscription.iterations} charged`}
                         </span>
                       </Td>
+
                       <Td>
                         <SubscriptionStatusBadge
                           status={subscription.status}
                           label={subscription.statusLabel}
                         />
                         {subscription.lastError && (
-                          <p className="mt-1 max-w-[200px] text-[11px] text-red-600">
+                          <p className="mt-1.5 max-w-[24ch] text-[11px] leading-snug text-stamp">
                             {subscription.lastError}
                           </p>
                         )}
                       </Td>
+
                       <Td>
-                        {subscription.nextDate
-                          ? new Date(subscription.nextDate).toLocaleDateString()
-                          : '—'}
+                        {subscription.nextDate ? (
+                          <span className="tabular font-mono text-[12px]">
+                            {new Date(subscription.nextDate).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <span className="text-ink-faint">—</span>
+                        )}
                       </Td>
+
                       <Td>
                         <div className="flex flex-wrap gap-1.5">
                           {subscription.status === 1 && subscription.subUrl && (
@@ -197,7 +226,7 @@ export function Subscriptions() {
                               href={subscription.subUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center rounded-md px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                              className="inline-flex items-center rounded-[3px] px-3 py-1.5 text-[13px] font-medium text-pen hover:bg-pen-wash"
                             >
                               Activation page
                             </a>
@@ -261,12 +290,27 @@ export function Subscriptions() {
                   );
                 })}
               </tbody>
-            </TableWrap>
-          )}
-        </Card>
+            </Ledger>
+          </Sheet>
+        )}
+      </Spread>
 
-        <div className="space-y-6">
-          <Card title="New subscription" description="POST /generate-subscription">
+      <Spread
+        aside={
+          <Note title="PayMe owns the schedule">
+            <p>
+              Each charge arrives as a <Code>sub-iteration-success</Code> or{' '}
+              <Code>sub-failure</Code> callback. There is no endpoint to charge
+              the next iteration yourself, and polling for one is the wrong
+              shape — wire up the callback instead.
+            </p>
+          </Note>
+        }
+      >
+        <Rule label="Start a new one" hint="generate-subscription" />
+
+        <div className="grid gap-6 lg:grid-cols-[24rem_minmax(0,1fr)] lg:items-start">
+          <Sheet>
             <form onSubmit={create} className="space-y-4">
               <Field label="Description" hint="Shown to the buyer and on the invoice.">
                 <Input
@@ -276,10 +320,10 @@ export function Subscriptions() {
                 />
               </Field>
 
-              <div className="grid grid-cols-[1fr_110px] gap-3">
+              <div className="grid grid-cols-[1fr_7rem] gap-3">
                 <Field
                   label="Price per iteration"
-                  hint={`= ${toMinorUnits(form.price || '0')} minor units`}
+                  hint={`Sent as ${toMinorUnits(form.price || '0')}`}
                 >
                   <Input
                     type="number"
@@ -346,10 +390,10 @@ export function Subscriptions() {
                   value={form.buyerKey}
                   onChange={(e) => setForm({ ...form, buyerKey: e.target.value })}
                 >
-                  <option value="">— no token: return an activation page —</option>
+                  <option value="">no token — return an activation page</option>
                   {tokens.map((token) => (
                     <option key={token.buyerKey} value={token.buyerKey}>
-                      {token.cardMask ?? 'card'} · {token.buyerName ?? '—'}
+                      {token.cardMask ?? 'card'} — {token.buyerName ?? 'unnamed buyer'}
                     </option>
                   ))}
                 </Select>
@@ -359,34 +403,31 @@ export function Subscriptions() {
                 Create subscription
               </Button>
             </form>
-          </Card>
+          </Sheet>
 
-          <Card title="Lifecycle">
-            <ol className="space-y-3 text-sm">
-              {[
-                ['1 initial', 'Created. Nothing charged — the buyer has not paid yet.'],
-                ['2 active', 'First iteration succeeded. PayMe charges the rest on schedule.'],
-                ['3 paused', 'Stopped, reversibly. Resume with PATCH /subscriptions/{id}/resume.'],
-                ['4 / 76 failed', '76 means PayMe will retry automatically; 4 means it gave up.'],
-                ['5 cancelled', 'Terminal. Cannot be resumed.'],
-                ['6 completed', 'All iterations ran.'],
-              ].map(([status, body]) => (
-                <li key={status}>
-                  <p className="font-mono text-xs font-medium">{status}</p>
-                  <p className="text-slate-600 dark:text-slate-400">{body}</p>
-                </li>
+          <div>
+            <h3 className="font-serif text-[15px] text-ink">
+              Where a subscription can be
+            </h3>
+            <dl className="mt-3">
+              {LIFECYCLE.map(([code, name, body]) => (
+                <div
+                  key={code + name}
+                  className="grid grid-cols-[2.5rem_1fr] gap-x-4 border-t border-rule py-2.5"
+                >
+                  <dt className="tabular font-mono text-[12px] text-ink-faint">{code}</dt>
+                  <dd>
+                    <p className="font-mono text-[12px] text-ink">{name}</p>
+                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-soft">
+                      {body}
+                    </p>
+                  </dd>
+                </div>
               ))}
-            </ol>
-            <Note>
-              <p>
-                Each charge arrives as a <Code>sub-iteration-success</Code> or{' '}
-                <Code>sub-failure</Code> callback. There is no endpoint to charge
-                the next iteration yourself.
-              </p>
-            </Note>
-          </Card>
+            </dl>
+          </div>
         </div>
-      </div>
-    </div>
+      </Spread>
+    </Page>
   );
 }

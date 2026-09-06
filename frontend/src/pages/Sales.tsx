@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { get, post } from '../lib/api';
 import { useLoader } from '../lib/useLoader';
-import { formatMoney, fromMinorUnits, toMinorUnits } from '../lib/money';
+import { fromMinorUnits, toMinorUnits } from '../lib/money';
 import type { Sale } from '../lib/types';
 import {
-  Badge,
   Button,
-  Card,
   Code,
   EmptyState,
   ErrorBanner,
+  Ledger,
+  Money,
   Note,
+  Page,
+  Rule,
+  Sheet,
   Spinner,
-  TableWrap,
+  Spread,
   Td,
+  TdPrimary,
   Th,
 } from '../components/ui';
 import { SaleStatusBadge } from '../components/StatusBadge';
@@ -23,6 +27,30 @@ const FLOW_LABELS: Record<string, string> = {
   'hosted-fields': 'Hosted Fields',
   'pay-sale': 'Direct API',
 };
+
+/** Every post-sale action, and the single endpoint each one really is. */
+const ACTIONS = [
+  {
+    label: 'Capture',
+    endpoint: 'capture-sale',
+    body: 'Settles an authorization. Needs sale_type="authorize" and status authorized, within 168 hours. Once only — there is no second capture.',
+  },
+  {
+    label: 'Void',
+    endpoint: 'refund-sale',
+    body: 'The same endpoint as a refund. On an authorization that was never captured it releases the hold, and PayMe reports the result as voided rather than refunded.',
+  },
+  {
+    label: 'Refund',
+    endpoint: 'refund-sale',
+    body: 'Full when sale_refund_amount is omitted, partial when it is set. Can run repeatedly as long as the total stays within the original amount.',
+  },
+  {
+    label: 'Fetch token',
+    endpoint: 'get-buyer-key',
+    body: 'Recovers the reusable buyer_key from a sale created with capture_buyer="1" — useful when the callback was missed.',
+  },
+];
 
 /**
  * The seller's sales, and the actions available on each.
@@ -68,195 +96,189 @@ export function Sales() {
     void act(sale.id, () => post(`/sales/${sale.id}/refund`, { amountMinor }));
   }
 
-  if (loading) return <Spinner />;
+  if (loading) return <Spinner label="Loading sales" />;
 
   const authorizedCount = sales?.filter((sale) => sale.status === 'authorized').length ?? 0;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Sales</h1>
-        <p className="mt-1 max-w-3xl text-slate-600 dark:text-slate-400">
-          Every sale created through any of the three flows, with the post-sale
-          actions PayMe allows in each state.
-        </p>
-      </div>
-
+    <Page
+      title="Sales"
+      lede="Every sale created through any of the three flows, with the post-sale actions PayMe allows in each state."
+      rail
+    >
       <ErrorBanner error={error} />
 
-      {authorizedCount > 0 && (
-        <Note tone="warning" title={`${authorizedCount} authorization${authorizedCount > 1 ? 's' : ''} awaiting capture`}>
-          <p>
-            An authorization holds the funds on the buyer's card for{' '}
-            <strong>168 hours</strong>. Capture within that window or the
-            reservation lapses and the money is never taken. Capture happens{' '}
-            <strong>once</strong> — fully or partially, with no second attempt.
-          </p>
-        </Note>
-      )}
-
-      <Card>
+      <Spread
+        aside={
+          authorizedCount > 0 ? (
+            <Note
+              tone="warning"
+              title={`${authorizedCount} authorization${authorizedCount > 1 ? 's' : ''} still held`}
+            >
+              <p>
+                An authorization holds funds on the buyer&#8217;s card for{' '}
+                <strong className="font-semibold text-ink">168 hours</strong>.
+                Capture within that window or the reservation lapses and the
+                money is never taken. Capture happens once — fully or partially,
+                with no second attempt.
+              </p>
+            </Note>
+          ) : null
+        }
+      >
         {sales && sales.length === 0 ? (
           <EmptyState title="No sales yet">
-            Take one from the <Code>Take a payment</Code> page.
+            Take one from the Take a payment page, or buy something from the
+            storefront as another user.
           </EmptyState>
         ) : (
-          <TableWrap>
-            <thead>
-              <tr>
-                <Th>Sale</Th>
-                <Th>Flow</Th>
-                <Th>Amount</Th>
-                <Th>Status</Th>
-                <Th>Buyer</Th>
-                <Th>Actions</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales?.map((sale) => {
-                const busy = busyId === sale.id;
-                const remaining = sale.priceMinor - sale.refundedMinor;
+          <Sheet flush>
+            <Ledger>
+              <thead>
+                <tr>
+                  <Th>Sale</Th>
+                  <Th>Flow</Th>
+                  <Th align="right">Amount</Th>
+                  <Th>Status</Th>
+                  <Th>Buyer</Th>
+                  <Th>Actions</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {sales?.map((sale) => {
+                  const busy = busyId === sale.id;
+                  const remaining = sale.priceMinor - sale.refundedMinor;
 
-                return (
-                  <tr key={sale.id}>
-                    <Td>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {sale.productName}
-                      </p>
-                      <p className="mt-0.5 break-all font-mono text-[11px] text-slate-400">
-                        {sale.paymeSaleId ?? 'not registered'}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-slate-400">
-                        {new Date(sale.createdAt).toLocaleString()}
-                      </p>
-                    </Td>
-                    <Td>
-                      <Badge>{FLOW_LABELS[sale.flow] ?? sale.flow}</Badge>
-                      {sale.saleType === 'authorize' && (
-                        <span className="mt-1 block text-[11px] text-slate-400">J5 authorize</span>
-                      )}
-                    </Td>
-                    <Td>
-                      <span className="tabular-nums">
-                        {formatMoney(sale.priceMinor, sale.currency)}
-                      </span>
-                      {sale.refundedMinor > 0 && (
-                        <span className="mt-0.5 block text-[11px] text-amber-600">
-                          −{formatMoney(sale.refundedMinor, sale.currency)} refunded
-                        </span>
-                      )}
-                    </Td>
-                    <Td>
-                      <SaleStatusBadge status={sale.status} />
-                      {sale.lastError && (
-                        <p className="mt-1 max-w-[220px] text-[11px] text-red-600">
-                          {sale.lastError}
+                  return (
+                    <tr key={sale.id}>
+                      <TdPrimary
+                        name={sale.productName}
+                        id={sale.paymeSaleId ?? 'not registered with PayMe'}
+                      >
+                        <p className="mt-0.5 text-[11px] text-ink-faint">
+                          {new Date(sale.createdAt).toLocaleString()}
                         </p>
-                      )}
-                    </Td>
-                    <Td>
-                      <p>{sale.buyerName ?? '—'}</p>
-                      {sale.buyerCardMask && (
-                        <p className="mt-0.5 font-mono text-[11px] text-slate-400">
-                          {sale.buyerCardMask}
-                        </p>
-                      )}
-                    </Td>
-                    <Td>
-                      <div className="flex flex-wrap gap-1.5">
-                        {sale.status === 'authorized' && (
-                          <>
+                      </TdPrimary>
+
+                      <Td>
+                        {FLOW_LABELS[sale.flow] ?? sale.flow}
+                        {sale.saleType === 'authorize' && (
+                          <span className="mt-1 block font-mono text-[10px] text-ink-faint">
+                            J5 authorize
+                          </span>
+                        )}
+                      </Td>
+
+                      <Td align="right">
+                        <Money minor={sale.priceMinor} currency={sale.currency} />
+                        {sale.refundedMinor > 0 && (
+                          <span className="tabular mt-0.5 block font-mono text-[11px] text-stamp">
+                            −{(sale.refundedMinor / 100).toFixed(2)} refunded
+                          </span>
+                        )}
+                      </Td>
+
+                      <Td>
+                        <SaleStatusBadge status={sale.status} />
+                        {sale.lastError && (
+                          <p className="mt-1.5 max-w-[24ch] text-[11px] leading-snug text-stamp">
+                            {sale.lastError}
+                          </p>
+                        )}
+                      </Td>
+
+                      <Td>
+                        {sale.buyerName ?? <span className="text-ink-faint">—</span>}
+                        {sale.buyerCardMask && (
+                          <span className="mt-0.5 block font-mono text-[10px] text-ink-faint">
+                            {sale.buyerCardMask}
+                          </span>
+                        )}
+                      </Td>
+
+                      <Td>
+                        <div className="flex flex-wrap gap-1.5">
+                          {sale.status === 'authorized' && (
+                            <>
+                              <Button
+                                loading={busy}
+                                onClick={() =>
+                                  act(sale.id, () => post(`/sales/${sale.id}/capture`))
+                                }
+                                title="capture-sale — settle the reserved funds"
+                              >
+                                Capture
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                loading={busy}
+                                onClick={() => refund(sale)}
+                                title="refund-sale on an uncaptured authorization releases the hold"
+                              >
+                                Void
+                              </Button>
+                            </>
+                          )}
+                          {(sale.status === 'completed' ||
+                            sale.status === 'partial-refund') &&
+                            remaining > 0 && (
+                              <Button
+                                variant="secondary"
+                                loading={busy}
+                                onClick={() => refund(sale)}
+                              >
+                                Refund
+                              </Button>
+                            )}
+                          {sale.captureBuyerRequested && sale.status === 'completed' && (
                             <Button
+                              variant="ghost"
                               loading={busy}
                               onClick={() =>
-                                act(sale.id, () => post(`/sales/${sale.id}/capture`))
+                                act(sale.id, () => post(`/sales/${sale.id}/buyer-key`))
                               }
-                              title="capture-sale — settle the reserved funds"
+                              title="get-buyer-key — recover the reusable token from this sale"
                             >
-                              Capture
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              loading={busy}
-                              onClick={() => refund(sale)}
-                              title="refund-sale on an uncaptured authorization releases the hold"
-                            >
-                              Void
-                            </Button>
-                          </>
-                        )}
-                        {(sale.status === 'completed' ||
-                          sale.status === 'partial-refund') &&
-                          remaining > 0 && (
-                            <Button variant="secondary" loading={busy} onClick={() => refund(sale)}>
-                              Refund
+                              Fetch token
                             </Button>
                           )}
-                        {sale.captureBuyerRequested && sale.status === 'completed' && (
-                          <Button
-                            variant="ghost"
-                            loading={busy}
-                            onClick={() =>
-                              act(sale.id, () => post(`/sales/${sale.id}/buyer-key`))
-                            }
-                            title="get-buyer-key — recover the reusable token from this sale"
-                          >
-                            Fetch token
-                          </Button>
-                        )}
-                        {sale.status === 'initial' && sale.saleUrl && (
-                          <a
-                            href={sale.saleUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center rounded-md px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-                          >
-                            Open page
-                          </a>
-                        )}
-                      </div>
-                    </Td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </TableWrap>
+                          {sale.status === 'initial' && sale.saleUrl && (
+                            <a
+                              href={sale.saleUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center rounded-[3px] px-3 py-1.5 text-[13px] font-medium text-pen hover:bg-pen-wash"
+                            >
+                              Open payment page
+                            </a>
+                          )}
+                        </div>
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Ledger>
+          </Sheet>
         )}
-      </Card>
+      </Spread>
 
-      <Card title="What each action maps to">
-        <dl className="grid gap-4 text-sm sm:grid-cols-2">
-          {[
-            [
-              'Capture',
-              'POST /capture-sale',
-              'Settles an authorization. Requires sale_type="authorize" and status authorized, within 168 hours of the authorization. Once only — there is no second capture.',
-            ],
-            [
-              'Void',
-              'POST /refund-sale',
-              'The same endpoint as a refund. On an authorization that was never captured it releases the hold; PayMe reports the result as voided rather than refunded.',
-            ],
-            [
-              'Refund',
-              'POST /refund-sale',
-              'Full when sale_refund_amount is omitted, partial when it is set. Can run repeatedly as long as the total stays within the original amount.',
-            ],
-            [
-              'Fetch token',
-              'POST /get-buyer-key',
-              'Recovers the reusable buyer_key from a sale that was created with capture_buyer="1" — useful when the callback was missed.',
-            ],
-          ].map(([label, endpoint, body]) => (
-            <div key={label}>
-              <dt className="font-medium">
-                {label} <Code>{endpoint}</Code>
-              </dt>
-              <dd className="mt-1 text-slate-600 dark:text-slate-400">{body}</dd>
+      <Spread aside={null} className="pt-4">
+        <Rule label="What each action really is" />
+        <div className="grid gap-x-10 gap-y-5 sm:grid-cols-2">
+          {ACTIONS.map((action) => (
+            <div key={action.label} className="border-t border-rule pt-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="font-serif text-[15px] text-ink">{action.label}</p>
+                <Code>{action.endpoint}</Code>
+              </div>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">
+                {action.body}
+              </p>
             </div>
           ))}
-        </dl>
-      </Card>
-    </div>
+        </div>
+      </Spread>
+    </Page>
   );
 }

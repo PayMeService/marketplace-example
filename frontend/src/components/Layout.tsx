@@ -1,105 +1,144 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth-context';
-import { Button } from './ui';
+import { useTheme } from '../lib/theme';
+import { Button, Stamp } from './ui';
 
 /**
- * App shell. The nav is grouped by who the reader is at that moment — buyer,
- * seller, marketplace operator — because the PayMe integration looks different
- * from each side.
+ * App shell.
+ *
+ * The nav is grouped by who the reader is at that moment — shopper, seller,
+ * marketplace operator — because the PayMe integration looks different from
+ * each side, and a flat row of ten links hides that entirely. The groups are
+ * separated by a hairline rather than labelled, so the structure is visible
+ * without three more words of chrome on every page.
  */
-const NAV = [
+const NAV: Array<{ to: string; label: string; end?: boolean; roles: string[] | null }> = [
   { to: '/', label: 'Storefront', end: true, roles: null },
+
   { to: '/products', label: 'My products', roles: ['user', 'seller', 'admin'] },
   { to: '/sell', label: 'Sell with us', roles: ['user', 'seller', 'admin'] },
-  { to: '/seller', label: 'Seller dashboard', roles: ['seller', 'admin'] },
+
+  { to: '/seller', label: 'Dashboard', roles: ['seller', 'admin'] },
   { to: '/checkout', label: 'Take a payment', roles: ['seller', 'admin'] },
   { to: '/sales', label: 'Sales', roles: ['seller', 'admin'] },
   { to: '/subscriptions', label: 'Subscriptions', roles: ['seller', 'admin'] },
+
   { to: '/admin/sellers', label: 'Sellers', roles: ['admin'] },
   { to: '/admin/callbacks', label: 'Callbacks', roles: ['admin'] },
   { to: '/admin/settings', label: 'PayMe settings', roles: ['admin'] },
-] as const;
+];
+
+/** Indexes in NAV where one audience ends and the next begins. */
+const GROUP_STARTS = new Set(['/products', '/seller', '/admin/sellers']);
+
+const THEME_LABEL = { auto: 'auto', light: 'light', dark: 'dark' } as const;
 
 export function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { theme, cycle } = useTheme();
 
-  const visible = NAV.filter(
-    (item) => !item.roles || (user && (item.roles as readonly string[]).includes(user.role)),
-  );
+  const visible = NAV.filter((item) => !item.roles || (user && item.roles.includes(user.role)));
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-6 py-3">
-          <NavLink to="/" className="flex items-center gap-2">
-            <span className="grid size-7 place-items-center rounded-md bg-indigo-600 text-sm font-bold text-white">
-              M
-            </span>
-            <span className="text-sm font-semibold tracking-tight">
-              marketplace<span className="text-slate-400">-example</span>
+    <div className="min-h-screen bg-ledger text-ink">
+      <header className="border-b border-rule-strong bg-paper">
+        <div className="mx-auto flex max-w-[78rem] flex-wrap items-center gap-x-6 gap-y-3 px-6 py-3">
+          <NavLink to="/" className="flex items-center gap-2.5">
+            {/* Banded paper, ruled once in ink — the app's whole idea at 20px. */}
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              <rect width="20" height="20" rx="2" fill="var(--ledger-alt)" />
+              <rect y="4" width="20" height="3" fill="var(--rule-strong)" opacity=".55" />
+              <rect y="11" width="20" height="3" fill="var(--rule-strong)" opacity=".55" />
+              <rect x="14" width="2" height="20" fill="var(--pen)" />
+            </svg>
+            <span className="font-serif text-[15px] tracking-tight text-ink">
+              marketplace<span className="text-ink-faint">-example</span>
             </span>
           </NavLink>
 
-          <nav className="flex flex-1 flex-wrap items-center gap-1">
-            {visible.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={'end' in item ? item.end : false}
-                className={({ isActive }) =>
-                  `rounded-md px-2.5 py-1.5 text-sm transition ${
-                    isActive
-                      ? 'bg-slate-100 font-medium text-slate-900 dark:bg-slate-800 dark:text-slate-100'
-                      : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              type="button"
+              onClick={cycle}
+              aria-label={`Colour theme: ${THEME_LABEL[theme]}. Change it.`}
+              className="w-14 rounded-[3px] border border-rule px-1.5 py-1 font-mono text-[11px] text-ink-faint hover:border-rule-strong hover:text-ink"
+            >
+              {THEME_LABEL[theme]}
+            </button>
 
-          {user ? (
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm font-medium leading-tight">
-                  {user.firstName} {user.lastName}
-                </p>
-                <p className="text-xs leading-tight text-slate-500 dark:text-slate-400">
-                  {user.role}
-                </p>
+            {user ? (
+              <>
+                <div className="text-right leading-tight">
+                  <p className="text-[13px] font-medium text-ink">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="mt-0.5">
+                    <Stamp tone={user.role === 'admin' ? 'info' : 'neutral'}>
+                      {user.role}
+                    </Stamp>
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    logout();
+                    navigate('/login');
+                  }}
+                >
+                  Sign out
+                </Button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" onClick={() => navigate('/login')}>
+                  Sign in
+                </Button>
+                <Button onClick={() => navigate('/register')}>Create account</Button>
               </div>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  logout();
-                  navigate('/login');
-                }}
-              >
-                Sign out
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={() => navigate('/login')}>
-                Sign in
-              </Button>
-              <Button onClick={() => navigate('/register')}>Create account</Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        <nav className="mx-auto max-w-[78rem] px-6">
+          <ul className="flex flex-wrap items-center gap-x-5 border-t border-rule">
+            {visible.map((item) => (
+              <li key={item.to} className="flex items-center gap-5">
+                {GROUP_STARTS.has(item.to) && (
+                  <span className="h-3.5 w-px bg-rule-strong" aria-hidden="true" />
+                )}
+                <NavLink
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `-mb-px block border-b-2 py-2.5 text-[13px] transition-colors ${
+                      isActive
+                        ? 'border-pen font-medium text-ink'
+                        : 'border-transparent text-ink-soft hover:border-rule-strong hover:text-ink'
+                    }`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8">
+      <main className="mx-auto max-w-[78rem] px-6 py-10">
         <Outlet />
       </main>
 
-      <footer className="mx-auto max-w-7xl px-6 pb-10 text-xs text-slate-400">
-        A worked PayMe integration — seller onboarding, iframe / hosted fields /
-        direct API checkout, authorize &amp; capture, subscriptions, balances and
-        signed callbacks. The prose walkthrough lives in{' '}
-        <code className="font-mono">docs/</code>.
+      <footer className="mx-auto max-w-[78rem] px-6 pb-12">
+        <div className="border-t border-rule pt-5">
+          <p className="max-w-[68ch] text-[12px] leading-relaxed text-ink-faint">
+            A worked PayMe integration — seller onboarding, iframe / hosted
+            fields / direct API checkout, authorize and capture, subscriptions,
+            balances and signed callbacks. The prose walkthrough lives in{' '}
+            <code className="font-mono text-ink-soft">docs/</code>.
+          </p>
+        </div>
       </footer>
     </div>
   );

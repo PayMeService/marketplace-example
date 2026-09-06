@@ -198,16 +198,44 @@ export async function createPayMeInstance(
   });
 }
 
-/** Styling handed to each hosted field, so PayMe's iframes match the surrounding form. */
-export const FIELD_STYLES = {
-  input: {
-    'font-size': '14px',
-    'font-family':
-      'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-    color: '#0f172a',
-    'font-weight': '400',
-  },
-  '::placeholder': { color: '#94a3b8' },
-  ':focus': { color: '#0f172a' },
-  '.invalid': { color: '#dc2626' },
-} as const;
+/**
+ * Styling handed to each hosted field.
+ *
+ * SHAPE MATTERS, AND FAILURE IS SILENT. PayMe accepts exactly three state
+ * groups — `base`, `invalid` and `valid` — with `::placeholder` nested inside
+ * `base`. Anything else is dropped without an error or a console warning, so a
+ * styles object keyed the way a CSS-in-JS library would key it (`input`, a
+ * top-level `::placeholder`, `:focus`, `.invalid`) leaves the fields rendering
+ * in PayMe's defaults and looks like the option was ignored rather than
+ * malformed.
+ * https://payme.stoplight.io/docs/guides/gsok0tstibqmz-hosted-fields-jsapi-guide?branch=main#field-styling
+ *
+ * ONLY SEVEN PROPERTIES ARE WHITELISTED: color, font-size, text-align,
+ * letter-spacing, text-decoration, text-shadow and text-transform. `font-family`
+ * is not among them, which is why the card digits keep PayMe's own face while
+ * every other field on the page is set in ours — that difference is PayMe's
+ * rule, not an oversight.
+ *
+ * Colours are read from the live custom properties rather than hard-coded,
+ * because the fields are cross-origin: nothing inside them inherits the page's
+ * theme, and a fixed dark ink leaves a dark-theme buyer typing invisible
+ * digits. They resolve at mount time, which is the only moment PayMe accepts
+ * them — a theme switched after mounting does not reach the iframes until the
+ * checkout is started again.
+ */
+export function fieldStyles(): Record<string, unknown> {
+  const token = (name: string, fallback: string) =>
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+
+  const ink = token('--ink', '#16261c');
+
+  return {
+    base: {
+      color: ink,
+      'font-size': '13px',
+      '::placeholder': { color: token('--ink-faint', '#5f7a68') },
+    },
+    invalid: { color: token('--stamp', '#a62b2b') },
+    valid: { color: ink },
+  };
+}

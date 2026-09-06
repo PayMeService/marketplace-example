@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { get, post } from '../lib/api';
-import { formatMoney } from '../lib/money';
+import { useLoader } from '../lib/useLoader';
 import { useAuth } from '../lib/auth-context';
 import type { Product, Sale } from '../lib/types';
 import {
   Button,
-  Card,
   Code,
+  EmptyState,
   ErrorBanner,
+  Money,
   Note,
+  Sheet,
   Spinner,
 } from '../components/ui';
 import { SaleStatusBadge } from '../components/StatusBadge';
@@ -27,18 +29,19 @@ export function Buy() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [product, setProduct] = useState<Product | null>(null);
+  const {
+    data: product,
+    error: loadError,
+    loading,
+  } = useLoader(
+    async () =>
+      (await get<Product[]>('/products')).find((item) => item.id === productId) ?? null,
+    productId,
+  );
+
   const [sale, setSale] = useState<Sale | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    get<Product[]>('/products')
-      .then((products) => {
-        setProduct(products.find((item) => item.id === productId) ?? null);
-      })
-      .catch(setError);
-  }, [productId]);
 
   async function startCheckout() {
     if (!productId) return;
@@ -60,106 +63,108 @@ export function Buy() {
 
   if (!user) {
     return (
-      <Card title="Sign in to buy">
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          You need an account to complete a purchase.
-        </p>
-        <Button className="mt-4" onClick={() => navigate('/login')}>
-          Sign in
-        </Button>
-      </Card>
+      <EmptyState title="Sign in to buy">
+        You need an account to complete a purchase.
+        <div className="mt-4">
+          <Button onClick={() => navigate('/login')}>Sign in</Button>
+        </div>
+      </EmptyState>
     );
   }
 
-  if (!product && !error) return <Spinner />;
+  if (loading) return <Spinner label="Loading listing" />;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <Link to="/" className="text-sm text-indigo-600 hover:underline">
-        ← Back to the storefront
+    <div className="mx-auto max-w-[64rem] space-y-6">
+      <Link to="/" className="text-[13px] text-pen underline underline-offset-2">
+        Back to the storefront
       </Link>
 
-      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+      <div className="grid gap-8 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
         <div className="space-y-6">
-          <Card title={product?.name ?? 'Product'}>
-            {product && (
-              <>
-                <p className="text-3xl font-semibold tabular-nums">
-                  {formatMoney(product.priceMinor, product.currency)}
+          <ErrorBanner error={loadError ?? error} />
+
+          {product && (
+            <div>
+              <h1 className="font-serif text-[1.75rem] leading-tight tracking-[-0.015em] text-ink">
+                {product.name}
+              </h1>
+              <div className="mt-3">
+                <Money
+                  minor={product.priceMinor}
+                  currency={product.currency}
+                  size="xl"
+                  minorUnits
+                />
+              </div>
+              {product.description && (
+                <p className="mt-4 text-[14px] leading-relaxed text-ink-soft">
+                  {product.description}
                 </p>
-                <p className="mt-0.5 font-mono text-xs text-slate-400">
-                  sale_price: {product.priceMinor} {product.currency}
+              )}
+              {product.seller && (
+                <p className="mt-4 border-t border-rule pt-3 text-[13px] text-ink-soft">
+                  Sold by <span className="text-ink">{product.seller}</span>
                 </p>
-                {product.description && (
-                  <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-                    {product.description}
-                  </p>
-                )}
-                {product.seller && (
-                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-                    Sold by <strong>{product.seller}</strong>
-                  </p>
-                )}
-              </>
-            )}
+              )}
 
-            <ErrorBanner error={error} />
+              {!sale && (
+                <Button
+                  className="mt-5 w-full"
+                  loading={busy}
+                  onClick={startCheckout}
+                  disabled={!product}
+                >
+                  Buy now
+                </Button>
+              )}
+            </div>
+          )}
 
-            {!sale && (
-              <Button
-                className="mt-4 w-full"
-                loading={busy}
-                onClick={startCheckout}
-                disabled={!product}
-              >
-                Buy now
-              </Button>
-            )}
-          </Card>
-
-          <Note title="What happens when you click">
+          <Note title="What happens when you press Buy">
             <p>
               The server looks up who listed this item, finds their PayMe seller,
-              and calls <Code>generate-sale</Code> against{' '}
-              <em>their</em> MPL with <Code>sale_payment_method: "multi"</Code>.
-              The money goes to that seller's wallet, less the marketplace's{' '}
+              and calls <Code>generate-sale</Code> against <em>their</em> MPL
+              with <Code>sale_payment_method: &quot;multi&quot;</Code>. The money
+              goes to that seller&#8217;s wallet, less the marketplace&#8217;s{' '}
               <Code>market_fee</Code>.
             </p>
             <p>
-              You never see or choose an MPL — that routing is the marketplace's
-              job, and it is the part of a marketplace integration that has no
-              equivalent in a single-merchant one.
+              You never see or choose an MPL. That routing is the
+              marketplace&#8217;s job, and it is the part of a marketplace
+              integration that has no equivalent in a single-merchant one.
             </p>
           </Note>
         </div>
 
-        <Card
+        <Sheet
           title="Payment"
-          description={sale ? sale.saleUrl ?? '' : 'PayMe’s payment page appears here.'}
+          description={sale?.saleUrl ?? 'PayMe’s payment page appears here once the sale exists.'}
           actions={sale && <SaleStatusBadge status={sale.status} />}
         >
           {!sale && (
-            <div className="rounded-lg border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              Click “Buy now” to create the sale.
-            </div>
+            <EmptyState title="No sale yet">
+              Press Buy now to create it. Nothing is charged until you complete
+              PayMe&#8217;s form.
+            </EmptyState>
           )}
           {sale?.saleUrl && (
             <div className="space-y-3">
               <Note>
                 <p>
-                  Sandbox card <Code>5326105300985846</Code> · exp{' '}
-                  <Code>12/30</Code> · CVV <Code>658</Code> · social ID{' '}
+                  Sandbox card <Code>5326105300985846</Code>, expiry{' '}
+                  <Code>12/30</Code>, CVV <Code>658</Code>, social ID{' '}
                   <Code>008336174</Code>.
                 </p>
               </Note>
               <iframe
                 title="PayMe payment page"
                 src={sale.saleUrl}
-                className="h-[640px] w-full rounded-lg border border-slate-200 bg-white dark:border-slate-800"
+                className="h-[640px] w-full rounded-[3px] border border-rule bg-white"
               />
             </div>
           )}
-        </Card>
+        </Sheet>
       </div>
     </div>
   );
