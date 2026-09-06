@@ -3,6 +3,7 @@ import { del, get, post } from '../lib/api';
 import { useLoader } from '../lib/useLoader';
 import { CURRENCIES, PAYME_MIN_AMOUNT_MINOR, toMinorUnits } from '../lib/money';
 import type { Product } from '../lib/types';
+import { productImageUrl } from '../lib/dicebear';
 import {
   Button,
   Code,
@@ -18,7 +19,6 @@ import {
   Sheet,
   Spinner,
   Td,
-  TdPrimary,
   Textarea,
   Th,
 } from '../components/ui';
@@ -113,13 +113,24 @@ export function Products() {
               <tbody>
                 {products.map((product) => (
                   <tr key={product.id}>
-                    <TdPrimary name={product.name}>
-                      {product.description && (
-                        <p className="mt-1 max-w-[46ch] text-[12px] leading-relaxed text-ink-soft">
-                          {product.description}
-                        </p>
-                      )}
-                    </TdPrimary>
+                    <Td>
+                      <div className="flex items-center gap-3.5">
+                        <img
+                          src={productImageUrl(product.id)}
+                          alt=""
+                          loading="lazy"
+                          className="size-12 shrink-0 rounded-xl bg-ledger-alt object-cover"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-medium text-ink">{product.name}</p>
+                          {product.description && (
+                            <p className="mt-0.5 max-w-[42ch] text-[12px] leading-relaxed text-ink-soft">
+                              {product.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </Td>
                     <Td align="right">
                       <Money
                         minor={product.priceMinor}

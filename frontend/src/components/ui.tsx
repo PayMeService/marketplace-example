@@ -140,14 +140,22 @@ export function Rule({
   hint?: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      {step !== undefined && (
-        <span className="grid size-6 shrink-0 place-items-center rounded-[2px] border border-rule-strong font-mono text-[11px] text-ink-soft">
-          {step}
-        </span>
-      )}
-      <h2 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[1.1rem] leading-none text-ink">{label}</h2>
-      <span className="h-px flex-1 bg-rule" />
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-rule pb-3">
+      <h2
+        className="flex items-center gap-2.5 text-[1.25rem] leading-tight text-ink"
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontWeight: 600,
+          letterSpacing: '-0.03em',
+        }}
+      >
+        {step !== undefined && (
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-pen text-[12px] text-paper">
+            {step}
+          </span>
+        )}
+        {label}
+      </h2>
       {hint && (
         <span className="shrink-0 font-mono text-[11px] text-ink-faint">{hint}</span>
       )}
@@ -394,7 +402,7 @@ export function Money({
 }: {
   minor: number;
   currency: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
   minorUnits?: boolean;
   tone?: 'stamp' | 'seal';
 }) {
@@ -403,6 +411,7 @@ export function Money({
     md: 'text-[15px]',
     lg: 'text-[22px] leading-tight',
     xl: 'text-[34px] leading-none tracking-[-0.02em]',
+    xxl: 'text-[clamp(2.2rem,6vw,3rem)] leading-none tracking-[-0.03em]',
   }[size];
   const color = tone === 'stamp' ? 'text-stamp' : tone === 'seal' ? 'text-seal' : 'text-ink';
 

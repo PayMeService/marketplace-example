@@ -3,6 +3,7 @@ import { get, patch, post } from '../lib/api';
 import { useLoader } from '../lib/useLoader';
 import { CURRENCIES, toMinorUnits } from '../lib/money';
 import type { SavedToken, Subscription } from '../lib/types';
+import { productImageUrl } from '../lib/dicebear';
 import {
   Button,
   Code,
@@ -20,7 +21,6 @@ import {
   Spinner,
   Spread,
   Td,
-  TdPrimary,
   Th,
 } from '../components/ui';
 import { SubscriptionStatusBadge } from '../components/StatusBadge';
@@ -170,16 +170,29 @@ export function Subscriptions() {
                   const busy = busyId === subscription.id;
                   return (
                     <tr key={subscription.id}>
-                      <TdPrimary
-                        name={subscription.description}
-                        id={subscription.paymeSubId ?? 'not registered with PayMe'}
-                      >
-                        {subscription.buyerCardMask && (
-                          <p className="mt-0.5 font-mono text-[10px] text-ink-faint">
-                            {subscription.buyerCardMask}
-                          </p>
-                        )}
-                      </TdPrimary>
+                      <Td>
+                        <div className="flex items-center gap-3.5">
+                          <img
+                            src={productImageUrl(subscription.id)}
+                            alt=""
+                            loading="lazy"
+                            className="size-11 shrink-0 rounded-xl bg-ledger-alt object-cover"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium text-ink">
+                              {subscription.description}
+                            </p>
+                            <p className="mt-0.5 break-all font-mono text-[10px] text-ink-faint">
+                              {subscription.paymeSubId ?? 'not registered with PayMe'}
+                            </p>
+                            {subscription.buyerCardMask && (
+                              <p className="font-mono text-[10px] text-ink-faint">
+                                {subscription.buyerCardMask}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </Td>
 
                       <Td align="right">
                         <Money

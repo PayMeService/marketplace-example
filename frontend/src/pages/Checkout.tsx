@@ -109,10 +109,10 @@ export function Checkout() {
               type="button"
               aria-pressed={selected}
               onClick={() => setFlow(item.id)}
-              className={`flex flex-col items-stretch justify-start rounded-[3px] border bg-paper p-4 text-left transition-colors ${
+              className={`flex flex-col items-stretch justify-start rounded-2xl border bg-paper p-5 text-left shadow-[0_2px_10px_rgba(16,22,25,0.05)] transition-all duration-200 ${
                 selected
-                  ? 'border-pen border-t-[3px] border-t-pen'
-                  : 'border-rule border-t-[3px] border-t-rule-strong hover:border-t-ink-faint'
+                  ? 'border-transparent ring-2 ring-ink'
+                  : 'border-rule hover:-translate-y-1 hover:shadow-[0_14px_40px_rgba(16,22,25,0.10)]'
               }`}
             >
               <h3 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[16px] text-ink">{item.title}</h3>
