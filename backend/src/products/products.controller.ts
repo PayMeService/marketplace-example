@@ -29,6 +29,10 @@ export class ProductsController {
       description: product.description,
       priceMinor: product.priceMinor,
       currency: product.currency,
+      // The owner's id, so the client can group listings by store and link to
+      // one. The display name alone cannot do that: two sellers may share a
+      // name, and a rename would silently move products between stores.
+      storeId: product.ownerId,
       seller: product.owner
         ? `${product.owner.firstName} ${product.owner.lastName}`
         : null,

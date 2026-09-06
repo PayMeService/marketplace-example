@@ -36,7 +36,7 @@ export function Register() {
 
   return (
     <div className="mx-auto max-w-[22rem] py-6">
-      <h1 className="font-serif text-[2rem] leading-tight tracking-[-0.015em] text-ink">
+      <h1 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[2rem] leading-tight tracking-[-0.015em] text-ink">
         Create an account
       </h1>
       <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">

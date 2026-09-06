@@ -1,4 +1,8 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayNotEmpty,
+  IsArray,
   IsBoolean,
   IsEmail,
   IsIn,
@@ -8,8 +12,10 @@ import {
   IsString,
   IsUUID,
   Matches,
+  Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import {
   PAYME_MIN_AMOUNT_MINOR,
@@ -179,4 +185,40 @@ export class RefundSaleDto {
   @IsInt()
   @Min(PAYME_MIN_AMOUNT_MINOR)
   amountMinor?: number;
+}
+
+/** One line of a cart. The price is never sent — it comes from the listing. */
+export class CartItemDto {
+  @IsUUID()
+  productId: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(99)
+  quantity: number;
+}
+
+/**
+ * A buyer's cart.
+ *
+ * Deliberately carries no prices and no seller: both are resolved server-side
+ * from the listings, because a price in the request body is a price the buyer
+ * can edit and a seller in the request body is a wallet the buyer can choose.
+ */
+export class BuyCartDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => CartItemDto)
+  items: CartItemDto[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  buyerName?: string;
+
+  @IsOptional()
+  @IsEmail()
+  buyerEmail?: string;
 }

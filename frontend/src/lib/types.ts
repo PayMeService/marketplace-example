@@ -57,8 +57,20 @@ export interface Product {
   priceMinor: number;
   currency: string;
   active?: boolean;
+  /** The owning user's id — the same value a Store is keyed by. */
+  storeId?: string;
   seller?: string | null;
   createdAt: string;
+}
+
+/** A shop: a user who has opened a PayMe seller account, plus their listings. */
+export interface Store {
+  id: string;
+  name: string;
+  owner: string | null;
+  approved: boolean;
+  currencies: string[];
+  productCount: number;
 }
 
 export type SaleFlow = 'iframe' | 'hosted-fields' | 'pay-sale';

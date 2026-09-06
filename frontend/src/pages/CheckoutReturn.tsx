@@ -46,7 +46,7 @@ export function CheckoutReturn() {
     <div className="mx-auto max-w-[42rem] space-y-8 py-4">
       <header className="border-b border-rule-strong pb-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h1 className="font-serif text-[2rem] leading-tight tracking-[-0.015em] text-ink">
+          <h1 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[2rem] leading-tight tracking-[-0.015em] text-ink">
             {paymeStatus === 'success' ? 'Payment completed' : 'Back from PayMe'}
           </h1>
           {sale && <SaleStatusBadge status={sale.status} />}
@@ -59,7 +59,7 @@ export function CheckoutReturn() {
         <div className="space-y-5">
           <div className="flex items-end justify-between gap-6 border-b border-rule pb-4">
             <div>
-              <p className="font-serif text-[1.25rem] leading-snug text-ink">
+              <p className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[1.25rem] leading-snug text-ink">
                 {sale.productName}
               </p>
               {sale.buyerCardMask && (

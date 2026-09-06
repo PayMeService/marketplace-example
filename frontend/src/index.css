@@ -22,19 +22,20 @@
    ========================================================================== */
 
 :root {
-  --ledger: #f0fff0; /* Honeydew — the page itself */
-  --ledger-alt: #e3f5e5; /* the printed band: zebra rows, grouped sections */
-  --paper: #ffffff; /* a sheet laid on the ledger */
-  --ink: #16261c; /* green-cast black, never a neutral grey */
-  --ink-soft: #47604f;
-  --ink-faint: #5f7a68;
-  --rule: #cbdfcc;
-  --rule-strong: #9ec0a4;
-  --pen: #1a3a6e;
-  --pen-wash: #e9f0fa;
+  --ledger: #f6fbf6; /* the page: Honeydew pulled back, so white cards lift off it */
+  --ledger-alt: #edf6ed; /* tints: table bands, grouped sections, code chips */
+  --paper: #ffffff; /* cards and sheets — anything raised */
+  --ink: #101619; /* display and headings */
+  --ink-soft: #56675e;
+  --ink-faint: #7c8f84;
+  --rule: #e4eee7;
+  --rule-strong: #cfe0d5;
+  --pen: #14231d; /* actions: a near-black with a green cast, always set in pills */
+  --pen-wash: #eef4f1;
+  --accent: #7cc6f5; /* figures and highlights, never an action */
   --seal: #17693b;
   --seal-wash: #e0f3e6;
-  --stamp: #a62b2b;
+  --stamp: #b3261e;
   --stamp-wash: #fceaea;
   --amber: #8a5a0b;
   --amber-wash: #fbf1dc;
@@ -43,16 +44,17 @@
 /* The carbon copy. Same document, pressed through. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --ledger: #0a140e;
-    --ledger-alt: #1b2e22;
-    --paper: #14231a;
-    --ink: #e6f4e9;
-    --ink-soft: #a0b9a8;
-    --ink-faint: #83a08c;
-    --rule: #263b2e;
-    --rule-strong: #3b5946;
-    --pen: #93b8f2;
-    --pen-wash: #142441;
+    --ledger: #0b1110;
+    --ledger-alt: #131b19;
+    --paper: #151d1b;
+    --ink: #eef5f1;
+    --ink-soft: #a8bcb3;
+    --ink-faint: #85998f;
+    --rule: #24302c;
+    --rule-strong: #3a4a44;
+    --pen: #eef5f1;
+    --pen-wash: #1c2725;
+    --accent: #7cc6f5;
     --seal: #74ce95;
     --seal-wash: #12301d;
     --stamp: #ef9b9b;
@@ -63,16 +65,17 @@
 }
 
 :root[data-theme='dark'] {
-  --ledger: #0a140e;
-  --ledger-alt: #1b2e22;
-  --paper: #14231a;
-  --ink: #e6f4e9;
-  --ink-soft: #a0b9a8;
-  --ink-faint: #83a08c;
-  --rule: #263b2e;
-  --rule-strong: #3b5946;
-  --pen: #93b8f2;
-  --pen-wash: #142441;
+  --ledger: #0b1110;
+  --ledger-alt: #131b19;
+  --paper: #151d1b;
+  --ink: #eef5f1;
+  --ink-soft: #a8bcb3;
+  --ink-faint: #85998f;
+  --rule: #24302c;
+  --rule-strong: #3a4a44;
+  --pen: #eef5f1;
+  --pen-wash: #1c2725;
+  --accent: #7cc6f5;
   --seal: #74ce95;
   --seal-wash: #12301d;
   --stamp: #ef9b9b;
@@ -98,12 +101,15 @@
   --color-stamp-wash: var(--stamp-wash);
   --color-amber: var(--amber);
   --color-amber-wash: var(--amber-wash);
+  --color-accent: var(--accent);
 
   --font-sans: 'Public Sans', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Newsreader', ui-serif, Georgia, 'Times New Roman', serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono',
     Menlo, monospace;
+  --font-display: 'Archivo', 'Archivo Black', ui-sans-serif, system-ui,
+    sans-serif;
 }
 
 /* --------------------------------------------------------------------------
@@ -205,5 +211,39 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* ==========================================================================
+   Storefront tokens
+   ========================================================================== */
+
+[data-design='b'] {
+  --v-page: var(--ledger);
+  --v-card: var(--paper);
+  --v-display: var(--ink);
+  --v-body: var(--ink-soft);
+  --v-line: var(--rule);
+  --v-deep: var(--pen);
+  --v-deep-ink: var(--paper);
+  --v-accent: var(--accent);
+}
+
+/* A superellipse is closer to how these product tiles want to read than a
+   rounded rectangle; a large percentage radius is the cheap approximation. */
+.squircle {
+  border-radius: 28%;
+}
+
+/* Objects drift, but only a little and only if motion is welcome. The global
+   reduced-motion rule above already collapses this to its resting state. */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--drift-rot, 0deg));
+  }
+  50% {
+    transform: translateY(-14px) rotate(calc(var(--drift-rot, 0deg) + 3deg));
   }
 }

@@ -115,7 +115,7 @@ export function Checkout() {
                   : 'border-rule border-t-[3px] border-t-rule-strong hover:border-t-ink-faint'
               }`}
             >
-              <h3 className="font-serif text-[16px] text-ink">{item.title}</h3>
+              <h3 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[16px] text-ink">{item.title}</h3>
               <p className="mt-1 font-mono text-[10.5px] text-ink-faint">{item.calls}</p>
               <p className="mt-2.5 text-[13px] leading-relaxed text-ink-soft">{item.body}</p>
             </button>
@@ -736,7 +736,7 @@ function HostedFieldsCheckout({
           <>
             <Rule step={3} label="Charged" hint="pay-sale" />
             <Slip tone="seal">
-              <p className="font-serif text-[16px] text-seal">
+              <p className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[16px] text-seal">
                 {sale.status === 'authorized'
                   ? 'Authorized. Capture it from the Sales page within 168 hours.'
                   : 'Paid.'}

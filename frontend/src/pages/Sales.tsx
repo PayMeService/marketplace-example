@@ -269,7 +269,7 @@ export function Sales() {
           {ACTIONS.map((action) => (
             <div key={action.label} className="border-t border-rule pt-3">
               <div className="flex items-baseline justify-between gap-3">
-                <p className="font-serif text-[15px] text-ink">{action.label}</p>
+                <p className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[15px] text-ink">{action.label}</p>
                 <Code>{action.endpoint}</Code>
               </div>
               <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">

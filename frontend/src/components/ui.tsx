@@ -14,15 +14,17 @@ import { formatMoney } from '../lib/money';
    Four surfaces, and each one means something. Reaching for the wrong one is
    how a UI ends up as an undifferentiated stack of boxes:
 
-     Sheet   a work surface — a form, a table, a result. White, hairline,
-             banded header. This is the only thing that gets a border box.
+     Sheet   a work surface — a form, a table, a result. A raised white card.
+             This is the only thing that gets a box.
      Slip    a small readout with no header: a balance, a receipt line.
      Rule    a labelled hairline that opens a section. Not a box at all, which
              is why sections can nest inside a Sheet without doubling borders.
      Note    a margin annotation. Also not a box — a hairline in the gutter.
 
-   Nothing casts a shadow. Depth is carried by the paper/ledger contrast and by
-   rules, the way it is on a printed page.
+   Depth comes from a single soft shadow, kept identical on every raised
+   surface: varying it per component is what makes an interface look assembled
+   from parts. The hairline border alongside it is there for dark mode, where a
+   shadow on a dark ground is invisible.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -94,7 +96,14 @@ export function Page({
       <Spread aside={rail ? null : undefined}>
         <header className="border-b border-rule-strong pb-5">
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-            <h1 className="font-serif text-[2rem] leading-[1.08] tracking-[-0.015em] text-ink">
+            <h1
+              className="text-[2.15rem] leading-[1.05] text-ink"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontWeight: 600,
+                letterSpacing: '-0.035em',
+              }}
+            >
               {title}
             </h1>
             {actions && <div className="flex items-center gap-2">{actions}</div>}
@@ -137,7 +146,7 @@ export function Rule({
           {step}
         </span>
       )}
-      <h2 className="font-serif text-[1.1rem] leading-none text-ink">{label}</h2>
+      <h2 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[1.1rem] leading-none text-ink">{label}</h2>
       <span className="h-px flex-1 bg-rule" />
       {hint && (
         <span className="shrink-0 font-mono text-[11px] text-ink-faint">{hint}</span>
@@ -168,13 +177,13 @@ export function Sheet({
 }) {
   return (
     <section
-      className={`overflow-hidden rounded-[3px] border border-rule bg-paper ${className}`}
+      className={`overflow-hidden rounded-2xl border border-rule bg-paper shadow-[0_2px_10px_rgba(16,22,25,0.05)] ${className}`}
     >
       {(title || actions) && (
-        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-rule bg-ledger-alt px-5 py-3">
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-rule px-5 py-4">
           <div className="min-w-0">
             {title && (
-              <h2 className="font-serif text-[1.05rem] leading-tight text-ink">
+              <h2 className="text-[1.05rem] font-semibold leading-tight text-ink">
                 {title}
               </h2>
             )}
@@ -208,7 +217,7 @@ export function Slip({
     : '';
   return (
     <div
-      className={`rounded-[3px] border border-rule bg-paper p-4 ${edge} ${className}`}
+      className={`rounded-xl border border-rule bg-paper p-4 shadow-[0_2px_10px_rgba(16,22,25,0.05)] ${edge} ${className}`}
     >
       {children}
     </div>
@@ -222,10 +231,11 @@ export function Slip({
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const BUTTON_STYLES: Record<ButtonVariant, string> = {
-  primary: 'bg-pen text-paper hover:opacity-90 disabled:opacity-45',
-  secondary: 'border border-rule-strong bg-paper text-ink hover:bg-ledger-alt',
-  ghost: 'text-pen hover:bg-pen-wash',
-  danger: 'bg-stamp text-paper hover:opacity-90',
+  primary: 'bg-pen text-paper hover:scale-[1.03] disabled:hover:scale-100',
+  secondary:
+    'border border-rule bg-paper text-ink shadow-[0_2px_10px_rgba(16,22,25,0.05)] hover:scale-[1.03] disabled:hover:scale-100',
+  ghost: 'text-ink hover:bg-pen-wash',
+  danger: 'bg-stamp text-white hover:scale-[1.03] disabled:hover:scale-100',
 };
 
 export function Button({
@@ -242,7 +252,7 @@ export function Button({
     <button
       {...props}
       disabled={props.disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-[3px] px-3 py-1.5 text-[13px] font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50 ${BUTTON_STYLES[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-transform duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${BUTTON_STYLES[variant]} ${className}`}
     >
       {loading && (
         <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -282,7 +292,7 @@ export function Field({
 }
 
 const CONTROL =
-  'block w-full rounded-[3px] border border-rule-strong bg-paper px-2.5 py-1.5 text-[13px] text-ink placeholder:text-ink-faint focus:border-pen disabled:bg-ledger-alt disabled:text-ink-faint';
+  'block w-full rounded-xl border border-rule bg-paper px-3.5 py-2.5 text-[13px] text-ink placeholder:text-ink-faint focus:border-ink-faint disabled:bg-ledger-alt disabled:text-ink-faint';
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${CONTROL} ${props.className ?? ''}`} />;
@@ -309,7 +319,7 @@ export function Check({
   children?: ReactNode;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-[3px] border border-rule bg-ledger-alt px-3 py-2.5">
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-rule bg-ledger-alt px-3.5 py-3">
       <input
         type="checkbox"
         className="mt-0.5 size-4 shrink-0 accent-pen"
@@ -333,11 +343,11 @@ export function Check({
 export type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
 const STAMP_STYLES: Record<Tone, string> = {
-  neutral: 'border-y-rule-strong border-r-rule-strong border-l-ink-faint text-ink-soft',
-  success: 'border-y-seal/45 border-r-seal/45 border-l-seal text-seal',
-  warning: 'border-y-amber/45 border-r-amber/45 border-l-amber text-amber',
-  danger: 'border-y-stamp/45 border-r-stamp/45 border-l-stamp text-stamp',
-  info: 'border-y-pen/45 border-r-pen/45 border-l-pen text-pen',
+  neutral: 'bg-ink/8 text-ink-soft',
+  success: 'bg-seal/12 text-seal',
+  warning: 'bg-amber/14 text-amber',
+  danger: 'bg-stamp/12 text-stamp',
+  info: 'bg-accent/25 text-ink',
 };
 
 /**
@@ -360,7 +370,7 @@ export function Stamp({
 }) {
   return (
     <span
-      className={`inline-flex items-center whitespace-nowrap rounded-[2px] border-y border-r border-l-[3px] py-px pl-1.5 pr-2 align-middle font-mono text-[11px] leading-5 ${STAMP_STYLES[tone]}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 align-middle font-mono text-[11px] leading-5 ${STAMP_STYLES[tone]}`}
     >
       {children}
     </span>
@@ -413,7 +423,7 @@ export function Money({
 /** Monospace inline code, for PayMe field names and ids. */
 export function Code({ children }: { children: ReactNode }) {
   return (
-    <code className="rounded-[2px] bg-ledger-alt px-1 py-px font-mono text-[0.85em] text-ink">
+    <code className="rounded-md bg-ledger-alt px-1.5 py-0.5 font-mono text-[0.85em] text-ink">
       {children}
     </code>
   );
@@ -446,7 +456,7 @@ export function Note({
     >
       {title && (
         <p
-          className={`font-serif text-[15px] leading-snug ${tone === 'warning' ? 'text-amber' : 'text-ink'}`}
+          className={`font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[15px] leading-snug ${tone === 'warning' ? 'text-amber' : 'text-ink'}`}
         >
           {title}
         </p>
@@ -475,7 +485,7 @@ export function ErrorBanner({ error }: { error: unknown }) {
   const message = error instanceof Error ? error.message : String(error);
 
   return (
-    <div className="rounded-[3px] border border-stamp/30 border-l-[3px] border-l-stamp bg-stamp-wash px-4 py-3">
+    <div className="rounded-xl border-l-[3px] border-l-stamp bg-stamp-wash px-4 py-3">
       <p className="text-[13px] font-medium text-stamp">{message}</p>
       {apiError?.payme && (
         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono text-[11px] text-stamp">
@@ -510,7 +520,7 @@ export function ErrorBanner({ error }: { error: unknown }) {
 /** Confirmation that something took effect. Was hand-rolled on three pages. */
 export function Flash({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-[3px] border border-seal/30 border-l-[3px] border-l-seal bg-seal-wash px-4 py-2.5 text-[13px] text-seal">
+    <div className="rounded-xl border-l-[3px] border-l-seal bg-seal-wash px-4 py-3 text-[13px] text-seal">
       {children}
     </div>
   );
@@ -519,8 +529,8 @@ export function Flash({ children }: { children: ReactNode }) {
 /** An empty screen is an invitation to act, so it always carries the next step. */
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-[3px] bg-ledger-alt px-6 py-10 text-center">
-      <p className="font-serif text-[1.05rem] text-ink">{title}</p>
+    <div className="rounded-2xl bg-ledger-alt px-6 py-12 text-center">
+      <p className="text-[1.05rem] font-semibold text-ink">{title}</p>
       {children && (
         <div className="mx-auto mt-1.5 max-w-[46ch] text-[13px] leading-relaxed text-ink-soft">
           {children}

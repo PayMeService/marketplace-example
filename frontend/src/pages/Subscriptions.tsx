@@ -406,7 +406,7 @@ export function Subscriptions() {
           </Sheet>
 
           <div>
-            <h3 className="font-serif text-[15px] text-ink">
+            <h3 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[15px] text-ink">
               Where a subscription can be
             </h3>
             <dl className="mt-3">
