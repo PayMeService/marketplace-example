@@ -5,47 +5,55 @@ import { CURRENCIES, formatMoney, fromMinorUnits, toMinorUnits } from '../lib/mo
 import {
   createPayMeInstance,
   FIELDS,
-  FIELD_STYLES,
+  fieldStyles,
   type FieldEvent,
   type PayMeInstance,
   type TokenizationError,
 } from '../lib/payme-hosted-fields';
 import type { Product, Sale, SavedToken, Seller } from '../lib/types';
 import {
-  Badge,
   Button,
-  Card,
+  Check,
   Code,
+  DataList,
   EmptyState,
+  Entry,
   ErrorBanner,
   Field,
   Input,
+  Money,
   Note,
+  Page,
+  Rule,
   Select,
+  Sheet,
+  Slip,
   Spinner,
+  Stamp,
 } from '../components/ui';
 import { SaleStatusBadge } from '../components/StatusBadge';
 
 type Flow = 'iframe' | 'hosted-fields' | 'token';
 
-const FLOWS: Array<{ id: Flow; title: string; sub: string; body: string }> = [
+/** The three ways to charge, described by the calls each one actually makes. */
+const FLOWS: Array<{ id: Flow; title: string; calls: string; body: string }> = [
   {
     id: 'iframe',
     title: 'Hosted payment page',
-    sub: 'generate-sale → sale_url',
-    body: 'PayMe renders the whole form. You embed the returned URL in an iframe or redirect to it. Least work, no PCI scope, least control over the look.',
+    calls: 'generate-sale → sale_url',
+    body: 'PayMe renders the whole form. You embed the returned URL or redirect to it. Least work, no PCI scope, least control over the look.',
   },
   {
     id: 'hosted-fields',
-    title: 'Hosted Fields (JSAPI)',
-    sub: 'generate-sale → tokenize in browser → pay-sale',
-    body: 'PayMe serves just the card inputs as iframes inside your own checkout. Card data goes browser → PayMe; your server only ever handles the token.',
+    title: 'Hosted Fields',
+    calls: 'generate-sale → tokenize → pay-sale',
+    body: 'PayMe serves just the card inputs as iframes inside your own checkout. Card data goes browser to PayMe; your server only ever handles the token.',
   },
   {
     id: 'token',
-    title: 'Direct API with a saved token',
-    sub: 'generate-sale + pay-sale, server-side',
-    body: 'No UI at all. Charge a buyer_key captured on an earlier sale — one-click repeat purchases, and how you bill a returning customer.',
+    title: 'Direct API',
+    calls: 'generate-sale + pay-sale',
+    body: 'No buyer interaction at all. Charge a buyer_key captured on an earlier sale — one-click repeat purchases, and how you bill a returning customer.',
   },
 ];
 
@@ -67,49 +75,52 @@ export function Checkout() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return <Spinner label="Loading your seller" />;
 
   if (!seller) {
     return (
       <EmptyState title="You need a PayMe seller before you can take a payment">
-        <Link to="/sell" className="text-indigo-600 hover:underline">
+        <Link to="/sell" className="text-pen underline underline-offset-2">
           Open one first
-        </Link>
+        </Link>{' '}
+        — every call on this page is made against a seller&#8217;s own MPL.
       </EmptyState>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Take a payment</h1>
-        <p className="mt-1 max-w-3xl text-slate-600 dark:text-slate-400">
+    <Page
+      title="Take a payment"
+      lede={
+        <>
           Three ways to charge a buyer, all landing in the same place. Every one
-          of them starts with <Code>generate-sale</Code> against{' '}
+          starts with <Code>generate-sale</Code> against{' '}
           <Code>{seller.paymeId}</Code>; what differs is where the card is
-          entered.
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        {FLOWS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setFlow(item.id)}
-            className={`rounded-xl border p-4 text-left transition ${
-              flow === item.id
-                ? 'border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500 dark:bg-indigo-950/30'
-                : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
-            }`}
-          >
-            <h3 className="font-semibold">{item.title}</h3>
-            <p className="mt-0.5 font-mono text-[11px] text-indigo-600 dark:text-indigo-400">
-              {item.sub}
-            </p>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{item.body}</p>
-          </button>
-        ))}
+          entered and who sees it.
+        </>
+      }
+    >
+      <div className="grid gap-5 md:grid-cols-3">
+        {FLOWS.map((item) => {
+          const selected = flow === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => setFlow(item.id)}
+              className={`flex flex-col items-stretch justify-start rounded-[3px] border bg-paper p-4 text-left transition-colors ${
+                selected
+                  ? 'border-pen border-t-[3px] border-t-pen'
+                  : 'border-rule border-t-[3px] border-t-rule-strong hover:border-t-ink-faint'
+              }`}
+            >
+              <h3 className="font-serif text-[16px] text-ink">{item.title}</h3>
+              <p className="mt-1 font-mono text-[10.5px] text-ink-faint">{item.calls}</p>
+              <p className="mt-2.5 text-[13px] leading-relaxed text-ink-soft">{item.body}</p>
+            </button>
+          );
+        })}
       </div>
 
       {flow === 'iframe' && <IframeCheckout products={products} />}
@@ -117,7 +128,7 @@ export function Checkout() {
         <HostedFieldsCheckout products={products} seller={seller} />
       )}
       {flow === 'token' && <TokenCheckout products={products} />}
-    </div>
+    </Page>
   );
 }
 
@@ -200,52 +211,58 @@ function LineFields({
           value={line.productId}
           onChange={(e) => setLine({ ...line, productId: e.target.value })}
         >
-          <option value="">— one-off charge —</option>
+          <option value="">a one-off charge</option>
           {products.map((product) => (
             <option key={product.id} value={product.id}>
-              {product.name} · {formatMoney(product.priceMinor, product.currency)}
+              {product.name} — {formatMoney(product.priceMinor, product.currency)}
             </option>
           ))}
         </Select>
       </Field>
 
       {!usingProduct && (
-        <div className="grid gap-4 sm:grid-cols-[1fr_140px_110px]">
-          <Field label="Description" hint="Sent as product_name; shown to the buyer.">
+        <div className="space-y-4">
+          <Field label="Description" hint="Sent as product_name; the buyer sees it.">
             <Input
               value={line.productName}
               onChange={(e) => setLine({ ...line, productName: e.target.value })}
             />
           </Field>
-          <Field label="Amount" hint={`= ${priceMinor} minor units`}>
-            <Input
-              type="number"
-              step="0.01"
-              min="5"
-              value={line.price}
-              onChange={(e) => setLine({ ...line, price: e.target.value })}
-            />
-          </Field>
-          <Field label="Currency">
-            <Select
-              value={line.currency}
-              onChange={(e) => setLine({ ...line, currency: e.target.value })}
-            >
-              {CURRENCIES.map((code) => (
-                <option key={code}>{code}</option>
-              ))}
-            </Select>
-          </Field>
+          <div className="grid grid-cols-[1fr_7rem] gap-3">
+            <Field label="Amount" hint={`Sent as ${priceMinor}`}>
+              <Input
+                type="number"
+                step="0.01"
+                min="5"
+                value={line.price}
+                onChange={(e) => setLine({ ...line, price: e.target.value })}
+              />
+            </Field>
+            <Field label="Currency">
+              <Select
+                value={line.currency}
+                onChange={(e) => setLine({ ...line, currency: e.target.value })}
+              >
+                {CURRENCIES.map((code) => (
+                  <option key={code}>{code}</option>
+                ))}
+              </Select>
+            </Field>
+          </div>
         </div>
       )}
 
       {usingProduct && (
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Charging <strong>{formatMoney(priceMinor, currency)}</strong> —{' '}
-          <Code>sale_price: {priceMinor}</Code>. The price comes from the listing,
-          never from this form: a price in the request body is a price the buyer
-          can edit.
-        </p>
+        <Slip tone="pen">
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="text-[13px] text-ink-soft">Charging</span>
+            <Money minor={priceMinor} currency={currency} size="lg" minorUnits />
+          </div>
+          <p className="mt-2 text-[12.5px] leading-relaxed text-ink-soft">
+            The price comes from the listing, never from this form. A price in
+            the request body is a price the buyer can edit.
+          </p>
+        </Slip>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -264,7 +281,7 @@ function LineFields({
         </Field>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="space-y-4">
         {showSaleType && (
           <Field
             label="Sale type"
@@ -297,23 +314,16 @@ function LineFields({
       </div>
 
       {showCaptureBuyer && (
-        <label className="flex items-start gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-800">
-          <input
-            type="checkbox"
-            className="mt-0.5 size-4 rounded border-slate-300 text-indigo-600"
-            checked={line.captureBuyer}
-            onChange={(e) => setLine({ ...line, captureBuyer: e.target.checked })}
-          />
-          <span className="text-sm">
-            <span className="font-medium">Save the card for later</span>
-            <span className="mt-0.5 block text-slate-500 dark:text-slate-400">
-              Sends <Code>capture_buyer: "1"</Code>. PayMe returns a{' '}
-              <Code>buyer_key</Code> on the callback that can be charged again
-              without the buyer re-entering anything. Mutually exclusive with
-              paying by token.
-            </span>
-          </span>
-        </label>
+        <Check
+          checked={line.captureBuyer}
+          onChange={(captureBuyer) => setLine({ ...line, captureBuyer })}
+          label="Save the card for later"
+        >
+          Sends <Code>capture_buyer: &quot;1&quot;</Code>. PayMe returns a{' '}
+          <Code>buyer_key</Code> on the callback that can be charged again
+          without the buyer re-entering anything. Mutually exclusive with paying
+          by token.
+        </Check>
       )}
     </div>
   );
@@ -344,72 +354,77 @@ function IframeCheckout({ products }: { products: Product[] }) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-      <Card title="Create the sale" description="POST /generate-sale">
-        <form onSubmit={submit} className="space-y-4">
-          <ErrorBanner error={error} />
-          <LineFields
-            line={line}
-            setLine={setLine}
-            products={products}
-            priceMinor={priceMinor}
-            currency={currency}
-          />
-          <Field
-            label="Payment method"
-            hint="multi shows every method the seller has enabled and lets the buyer pick."
-          >
-            <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-              <option value="credit-card">credit-card</option>
-              <option value="multi">multi — buyer chooses</option>
-              <option value="bit">bit</option>
-              <option value="google-pay">google-pay</option>
-              <option value="apple-pay">apple-pay</option>
-              <option value="paypal">paypal</option>
-            </Select>
-          </Field>
-          <Button type="submit" loading={busy} className="w-full">
-            Generate payment page
-          </Button>
-        </form>
-      </Card>
-
-      <Card
-        title="PayMe's payment page"
-        description={sale ? sale.saleUrl ?? '' : 'The iframe appears once the sale exists.'}
-        actions={sale && <SaleStatusBadge status={sale.status} />}
-      >
-        {!sale && (
-          <EmptyState title="No sale yet">
-            <p>
-              <Code>generate-sale</Code> answers with <Code>payme_sale_id</Code>{' '}
-              and <Code>sale_url</Code>. The URL is what goes in the iframe.
-            </p>
-          </EmptyState>
-        )}
-        {sale?.saleUrl && (
-          <div className="space-y-3">
-            <Note>
-              <p>
-                Sandbox card: <Code>5326105300985846</Code>, exp{' '}
-                <Code>12/30</Code>, CVV <Code>658</Code>, social ID{' '}
-                <Code>008336174</Code>. Local ILS card, supports installments.
-              </p>
-            </Note>
-            <iframe
-              title="PayMe payment page"
-              src={sale.saleUrl}
-              className="h-[640px] w-full rounded-lg border border-slate-200 bg-white dark:border-slate-800"
+    <div className="grid gap-8 lg:grid-cols-[30rem_minmax(0,1fr)] lg:items-start">
+      <div className="space-y-4">
+        <Rule step={1} label="Create the sale" hint="generate-sale" />
+        <Sheet>
+          <form onSubmit={submit} className="space-y-4">
+            <ErrorBanner error={error} />
+            <LineFields
+              line={line}
+              setLine={setLine}
+              products={products}
+              priceMinor={priceMinor}
+              currency={currency}
             />
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              After paying, the buyer is redirected to <Code>sale_return_url</Code>{' '}
-              with the result in the query string — useful for UX, but not proof
-              of payment. The signed server-to-server callback to{' '}
-              <Code>sale_callback_url</Code> is the authoritative one.
-            </p>
-          </div>
-        )}
-      </Card>
+            <Field
+              label="Payment method"
+              hint="multi shows every method the seller has enabled and lets the buyer pick."
+            >
+              <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                <option value="credit-card">credit-card</option>
+                <option value="multi">multi — buyer chooses</option>
+                <option value="bit">bit</option>
+                <option value="google-pay">google-pay</option>
+                <option value="apple-pay">apple-pay</option>
+                <option value="paypal">paypal</option>
+              </Select>
+            </Field>
+            <Button type="submit" loading={busy} className="w-full">
+              Generate payment page
+            </Button>
+          </form>
+        </Sheet>
+      </div>
+
+      <div className="space-y-4">
+        <Rule step={2} label="The buyer pays" hint="sale_url" />
+        <Sheet
+          title="PayMe’s payment page"
+          description={sale?.saleUrl ?? 'The iframe appears once the sale exists.'}
+          actions={sale && <SaleStatusBadge status={sale.status} />}
+        >
+          {!sale && (
+            <EmptyState title="No sale yet">
+              <Code>generate-sale</Code> answers with a{' '}
+              <Code>payme_sale_id</Code> and a <Code>sale_url</Code>. The URL is
+              what goes in the iframe.
+            </EmptyState>
+          )}
+          {sale?.saleUrl && (
+            <div className="space-y-3">
+              <Note>
+                <p>
+                  Sandbox card <Code>5326105300985846</Code>, expiry{' '}
+                  <Code>12/30</Code>, CVV <Code>658</Code>, social ID{' '}
+                  <Code>008336174</Code>. A local ILS card, so installments work.
+                </p>
+              </Note>
+              <iframe
+                title="PayMe payment page"
+                src={sale.saleUrl}
+                className="h-[640px] w-full rounded-[3px] border border-rule bg-white"
+              />
+              <p className="text-[12px] leading-relaxed text-ink-soft">
+                After paying, the buyer lands on <Code>sale_return_url</Code>{' '}
+                with the result in the query string. Useful for the receipt, but
+                not proof of payment — the signed callback to{' '}
+                <Code>sale_callback_url</Code> is the authoritative one.
+              </p>
+            </div>
+          )}
+        </Sheet>
+      </div>
     </div>
   );
 }
@@ -417,6 +432,15 @@ function IframeCheckout({ products }: { products: Product[] }) {
 /* ------------------------------------------------------------------ */
 /* Flow 2 — Hosted Fields                                              */
 /* ------------------------------------------------------------------ */
+
+/** The three containers PayMe's field iframes are mounted into. */
+const FIELD_CONTAINERS = ['pm-card-number', 'pm-card-expiry', 'pm-card-cvv'];
+
+/* Matches Input's metrics exactly, so PayMe's iframes sit at the same height as
+   the fields on the other side of the page. The height has to be explicit: an
+   iframe with no intrinsic content height collapses to nothing. */
+const FIELD_BOX =
+  'mt-1.5 h-[34px] rounded-[3px] border border-rule-strong bg-paper px-2.5 py-1.5';
 
 function HostedFieldsCheckout({
   products,
@@ -481,7 +505,7 @@ function HostedFieldsCheckout({
       });
 
       const fields = payme.hostedFields();
-      const options = { styles: FIELD_STYLES };
+      const options = { styles: fieldStyles() };
 
       const cardNumber = fields.create(FIELDS.NUMBER, {
         ...options,
@@ -602,136 +626,155 @@ function HostedFieldsCheckout({
     Boolean(fieldState[FIELDS.CVV]?.isValid);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-      <Card title="Create the sale" description="POST /generate-sale, then tokenize in the browser">
-        <form onSubmit={startCheckout} className="space-y-4">
-          <ErrorBanner error={error} />
-          <LineFields
-            line={line}
-            setLine={setLine}
-            products={products}
-            priceMinor={priceMinor}
-            currency={currency}
-          />
-          <Button type="submit" loading={busy && stage === 'mounting'} className="w-full">
-            {stage === 'idle' ? 'Start checkout' : 'Start over with a new sale'}
-          </Button>
-        </form>
-      </Card>
+    <div className="grid gap-8 lg:grid-cols-[30rem_minmax(0,1fr)] lg:items-start">
+      <div className="space-y-4">
+        <Rule step={1} label="Reserve the sale" hint="generate-sale" />
+        <Sheet>
+          <form onSubmit={startCheckout} className="space-y-4">
+            <ErrorBanner error={error} />
+            <LineFields
+              line={line}
+              setLine={setLine}
+              products={products}
+              priceMinor={priceMinor}
+              currency={currency}
+            />
+            <Button type="submit" loading={busy && stage === 'mounting'} className="w-full">
+              {stage === 'idle' ? 'Start checkout' : 'Start over with a new sale'}
+            </Button>
+          </form>
+        </Sheet>
 
-      <Card
-        title="Your checkout, PayMe's inputs"
-        description="Each field below is an iframe served by cdn.payme.io. The card number never enters this page's DOM."
-        actions={sale && <SaleStatusBadge status={sale.status} />}
-      >
-        {stage === 'idle' && (
-          <EmptyState title="Not started">
-            <p>
-              Create the sale first — Hosted Fields needs a{' '}
+        <Note title="One session, one tokenization">
+          <p>
+            A PayMe instance can be tokenized exactly once. Every retry starts
+            from a fresh sale and a fresh instance, and the field containers are
+            emptied first — <Code>mount()</Code> appends rather than replaces,
+            so without that the dead iframes stack up under the live ones.
+          </p>
+        </Note>
+      </div>
+
+      <div className="space-y-4">
+        <Rule step={2} label="The buyer types their card" hint="cdn.payme.io iframes" />
+
+        <Sheet
+          title="Your checkout, PayMe’s inputs"
+          description="Each field below is an iframe served by PayMe. The card number never enters this page’s DOM."
+          actions={sale && <SaleStatusBadge status={sale.status} />}
+        >
+          {stage === 'idle' && (
+            <EmptyState title="Not started">
+              Reserve the sale first — Hosted Fields needs a{' '}
               <Code>payme_sale_id</Code> to charge against.
-            </p>
-          </EmptyState>
-        )}
+            </EmptyState>
+          )}
 
-        {stage !== 'idle' && (
-          <div className="space-y-4">
-            <Note>
-              <p>
-                Initialised with the seller's <strong>public</strong> key{' '}
-                <Code>{(sale?.publicKey ?? seller.publicKey ?? '').slice(0, 8)}…</Code>{' '}
-                — never the partner key, which is a server-side credential.
-              </p>
-            </Note>
+          {stage !== 'idle' && (
+            <div className="space-y-4">
+              <Note>
+                <p>
+                  Initialised with the seller&#8217;s{' '}
+                  <strong className="font-semibold text-ink">public</strong> key{' '}
+                  <Code>{(sale?.publicKey ?? seller.publicKey ?? '').slice(0, 8)}…</Code>{' '}
+                  — never the partner key, which is a server-side credential.
+                </p>
+              </Note>
 
-            <div className="space-y-3">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Card number</span>
-                  {cardType !== 'unknown' && <Badge tone="info">{cardType}</Badge>}
-                </div>
-                <div
-                  id="pm-card-number"
-                  className="mt-1 h-10 rounded-md bg-white px-3 py-2 ring-1 ring-inset ring-slate-300 dark:bg-slate-950 dark:ring-slate-700"
-                />
-                <FieldMessage state={fieldState[FIELDS.NUMBER]} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
-                  <span className="text-sm font-medium">Expiry</span>
-                  <div
-                    id="pm-card-expiry"
-                    className="mt-1 h-10 rounded-md bg-white px-3 py-2 ring-1 ring-inset ring-slate-300 dark:bg-slate-950 dark:ring-slate-700"
-                  />
-                  <FieldMessage state={fieldState[FIELDS.EXPIRATION]} />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-medium text-ink">Card number</span>
+                    {cardType !== 'unknown' && <Stamp tone="info">{cardType}</Stamp>}
+                  </div>
+                  <div id="pm-card-number" className={FIELD_BOX} />
+                  <FieldMessage state={fieldState[FIELDS.NUMBER]} />
                 </div>
-                <div>
-                  <span className="text-sm font-medium">CVV</span>
-                  <div
-                    id="pm-card-cvv"
-                    className="mt-1 h-10 rounded-md bg-white px-3 py-2 ring-1 ring-inset ring-slate-300 dark:bg-slate-950 dark:ring-slate-700"
-                  />
-                  <FieldMessage state={fieldState[FIELDS.CVV]} />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[13px] font-medium text-ink">Expiry</span>
+                    <div id="pm-card-expiry" className={FIELD_BOX} />
+                    <FieldMessage state={fieldState[FIELDS.EXPIRATION]} />
+                  </div>
+                  <div>
+                    <span className="text-[13px] font-medium text-ink">CVV</span>
+                    <div id="pm-card-cvv" className={FIELD_BOX} />
+                    <FieldMessage state={fieldState[FIELDS.CVV]} />
+                  </div>
                 </div>
               </div>
             </div>
+          )}
+        </Sheet>
 
-            {stage === 'ready' && (
-              <>
-                <Note>
-                  <p>
-                    Sandbox card <Code>5326105300985846</Code> · <Code>12/30</Code>{' '}
-                    · <Code>658</Code>. Or try{' '}
-                    <Code>4000000000000002</Code> to watch a decline come back.
-                  </p>
-                </Note>
-                <Button onClick={payNow} loading={busy} className="w-full">
-                  Pay {sale ? formatMoney(sale.priceMinor, sale.currency) : ''}
-                </Button>
-                {!allFieldsReportValid && (
-                  <p className="text-center text-xs text-slate-500">
-                    Not every field has reported itself valid yet — PayMe will
-                    check again when you pay.
-                  </p>
-                )}
-              </>
-            )}
-
-            {stage === 'paid' && sale && (
-              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
-                <p className="font-medium text-emerald-900 dark:text-emerald-200">
-                  {sale.status === 'authorized'
-                    ? 'Authorized — capture it from the Sales page within 168 hours.'
-                    : 'Paid.'}
+        {stage === 'ready' && (
+          <>
+            <Rule step={3} label="Charge the token" hint="pay-sale" />
+            <Sheet>
+              <Note>
+                <p>
+                  Sandbox card <Code>5326105300985846</Code>, <Code>12/30</Code>,{' '}
+                  <Code>658</Code>. Or try <Code>4000000000000002</Code> to watch
+                  a decline come back.
                 </p>
-                <dl className="mt-2 space-y-1 font-mono text-xs text-emerald-800 dark:text-emerald-300">
-                  <div>payme_sale_id: {sale.paymeSaleId}</div>
-                  {sale.paymeTransactionId && (
-                    <div>payme_transaction_id: {sale.paymeTransactionId}</div>
-                  )}
-                  {sale.buyerCardMask && <div>card: {sale.buyerCardMask}</div>}
-                </dl>
-                <Link
-                  to="/sales"
-                  className="mt-3 inline-block text-sm font-medium text-emerald-800 underline dark:text-emerald-300"
-                >
-                  See it on the Sales page →
-                </Link>
-              </div>
-            )}
-          </div>
+              </Note>
+              <Button onClick={payNow} loading={busy} className="mt-4 w-full">
+                Pay {sale ? formatMoney(sale.priceMinor, sale.currency) : ''}
+              </Button>
+              {!allFieldsReportValid && (
+                <p className="mt-2 text-center text-[12px] text-ink-faint">
+                  Not every field has reported itself valid yet. PayMe checks
+                  again when you pay, so this is a hint rather than a block.
+                </p>
+              )}
+            </Sheet>
+          </>
         )}
-      </Card>
+
+        {stage === 'paid' && sale && (
+          <>
+            <Rule step={3} label="Charged" hint="pay-sale" />
+            <Slip tone="seal">
+              <p className="font-serif text-[16px] text-seal">
+                {sale.status === 'authorized'
+                  ? 'Authorized. Capture it from the Sales page within 168 hours.'
+                  : 'Paid.'}
+              </p>
+              <div className="mt-3">
+                <DataList>
+                  <Entry term="payme_sale_id" wide>
+                    {sale.paymeSaleId}
+                  </Entry>
+                  {sale.paymeTransactionId && (
+                    <Entry term="payme_transaction_id" wide>
+                      {sale.paymeTransactionId}
+                    </Entry>
+                  )}
+                  {sale.buyerCardMask && (
+                    <Entry term="card" wide>
+                      {sale.buyerCardMask}
+                    </Entry>
+                  )}
+                </DataList>
+              </div>
+              <Link
+                to="/sales"
+                className="mt-3 inline-block text-[13px] font-medium text-pen underline underline-offset-2"
+              >
+                See it on the Sales page
+              </Link>
+            </Slip>
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-/** The three containers PayMe's field iframes are mounted into. */
-const FIELD_CONTAINERS = ['pm-card-number', 'pm-card-expiry', 'pm-card-cvv'];
-
 function FieldMessage({ state }: { state?: FieldEvent }) {
   if (!state || state.isValid) return null;
-  return <p className="mt-1 text-xs text-red-600">{state.message}</p>;
+  return <p className="mt-1 text-[12px] text-stamp">{state.message}</p>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -777,86 +820,96 @@ function TokenCheckout({ products }: { products: Product[] }) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-      <Card title="Charge a saved card" description="generate-sale + pay-sale, both server-side">
-        <form onSubmit={submit} className="space-y-4">
-          <ErrorBanner error={error} />
+    <div className="grid gap-8 lg:grid-cols-[30rem_minmax(0,1fr)] lg:items-start">
+      <div className="space-y-4">
+        <Rule step={1} label="Charge a saved card" hint="generate-sale + pay-sale" />
+        <Sheet>
+          <form onSubmit={submit} className="space-y-4">
+            <ErrorBanner error={error} />
 
-          {tokens && tokens.length === 0 ? (
-            <EmptyState title="No saved cards yet">
-              <p>
-                Run a sale with <strong>Save the card for later</strong> ticked —
-                that sends <Code>capture_buyer: "1"</Code> and PayMe returns a{' '}
-                <Code>buyer_key</Code> on the callback.
-              </p>
-            </EmptyState>
-          ) : (
-            <Field label="Saved card" hint="Each of these is a buyer_key from an earlier sale.">
-              <Select value={buyerKey} onChange={(e) => setBuyerKey(e.target.value)}>
-                {tokens?.map((token) => (
-                  <option key={token.buyerKey} value={token.buyerKey}>
-                    {token.cardMask ?? 'card'} · {token.buyerName ?? token.buyerEmail ?? '—'}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          )}
-
-          <LineFields
-            line={line}
-            setLine={setLine}
-            products={products}
-            priceMinor={priceMinor}
-            currency={currency}
-            showCaptureBuyer={false}
-          />
-
-          <Note>
-            <p>
-              No buyer interaction and no 3-D Secure prompt: the card was already
-              verified when the token was captured. That is what makes this the
-              flow for subscriptions, one-click repeat orders and back-office
-              charges.
-            </p>
-          </Note>
-
-          <Button type="submit" loading={busy} disabled={!buyerKey} className="w-full">
-            Charge {formatMoney(priceMinor, currency)}
-          </Button>
-        </form>
-      </Card>
-
-      <Card title="Result" actions={sale && <SaleStatusBadge status={sale.status} />}>
-        {!sale && (
-          <EmptyState title="Nothing charged yet">
-            The response from <Code>pay-sale</Code> is synchronous — the sale
-            details come straight back rather than arriving by callback.
-          </EmptyState>
-        )}
-        {sale && (
-          <dl className="space-y-2 font-mono text-xs">
-            {[
-              ['payme_sale_id', sale.paymeSaleId],
-              ['payme_sale_code', sale.paymeSaleCode],
-              ['payme_transaction_id', sale.paymeTransactionId],
-              ['sale_status', sale.status],
-              ['price', `${sale.priceMinor} ${sale.currency}`],
-              ['buyer_card_mask', sale.buyerCardMask],
-            ].map(([key, value]) => (
-              <div key={key as string} className="flex gap-3">
-                <dt className="w-44 shrink-0 text-slate-500 dark:text-slate-400">{key}</dt>
-                <dd className="break-all">{value ?? '—'}</dd>
-              </div>
-            ))}
-            {sale.lastError && (
-              <div className="flex gap-3 text-red-600">
-                <dt className="w-44 shrink-0">error</dt>
-                <dd>{sale.lastError}</dd>
-              </div>
+            {tokens && tokens.length === 0 ? (
+              <EmptyState title="No saved cards yet">
+                Run a sale with <strong>Save the card for later</strong> ticked.
+                That sends <Code>capture_buyer: &quot;1&quot;</Code> and PayMe
+                returns a <Code>buyer_key</Code> on the callback.
+              </EmptyState>
+            ) : (
+              <Field label="Saved card" hint="Each of these is a buyer_key from an earlier sale.">
+                <Select value={buyerKey} onChange={(e) => setBuyerKey(e.target.value)}>
+                  {tokens?.map((token) => (
+                    <option key={token.buyerKey} value={token.buyerKey}>
+                      {token.cardMask ?? 'card'} —{' '}
+                      {token.buyerName ?? token.buyerEmail ?? 'unnamed buyer'}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             )}
-          </dl>
-        )}
-      </Card>
+
+            <LineFields
+              line={line}
+              setLine={setLine}
+              products={products}
+              priceMinor={priceMinor}
+              currency={currency}
+              showCaptureBuyer={false}
+            />
+
+            <Button type="submit" loading={busy} disabled={!buyerKey} className="w-full">
+              Charge {formatMoney(priceMinor, currency)}
+            </Button>
+          </form>
+        </Sheet>
+
+        <Note title="No buyer, no 3-D Secure">
+          <p>
+            The card was already verified when the token was captured, so there
+            is no prompt and nothing for anyone to type. That is what makes this
+            the flow for subscriptions, one-click repeat orders and back-office
+            charges.
+          </p>
+        </Note>
+      </div>
+
+      <div className="space-y-4">
+        <Rule step={2} label="The response" hint="synchronous" />
+        <Sheet
+          title="What pay-sale returned"
+          actions={sale && <SaleStatusBadge status={sale.status} />}
+        >
+          {!sale && (
+            <EmptyState title="Nothing charged yet">
+              <Code>pay-sale</Code> answers synchronously — the sale details come
+              straight back rather than arriving by callback.
+            </EmptyState>
+          )}
+          {sale && (
+            <DataList>
+              <Entry term="payme_sale_id" wide>
+                {sale.paymeSaleId ?? '—'}
+              </Entry>
+              <Entry term="payme_sale_code" wide>
+                {sale.paymeSaleCode ?? '—'}
+              </Entry>
+              <Entry term="payme_transaction_id" wide>
+                {sale.paymeTransactionId ?? '—'}
+              </Entry>
+              <Entry term="sale_status">{sale.status}</Entry>
+              <Entry term="price">
+                <Money minor={sale.priceMinor} currency={sale.currency} size="sm" minorUnits />
+              </Entry>
+              <Entry term="buyer_card_mask" wide>
+                {sale.buyerCardMask ?? '—'}
+              </Entry>
+              {sale.lastError && (
+                <Entry term="error">
+                  <span className="text-stamp">{sale.lastError}</span>
+                </Entry>
+              )}
+            </DataList>
+          )}
+        </Sheet>
+      </div>
     </div>
   );
 }

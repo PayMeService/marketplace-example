@@ -4,7 +4,30 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>marketplace-example — PayMe integration</title>
+
+    <!-- Newsreader carries the prose, Public Sans the interface, IBM Plex Mono
+         the wire values. Every rule below has a system fallback, so a clone with
+         no network still renders in the right proportions — only the texture is
+         lost. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..600&family=Public+Sans:ital,wght@0,300..800;1,300..700&display=swap"
+    />
+
+    <script>
+      /* Applied before first paint so a dark-theme reader never sees a white
+         flash. The toggle in the header writes this key; absent, the OS wins. */
+      try {
+        var saved = localStorage.getItem('ledger-theme');
+        if (saved) document.documentElement.dataset.theme = saved;
+      } catch (e) {
+        /* Storage can throw in private mode — the OS preference still applies. */
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

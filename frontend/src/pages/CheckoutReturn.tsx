@@ -1,9 +1,17 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { get } from '../lib/api';
 import { useLoader } from '../lib/useLoader';
-import { formatMoney } from '../lib/money';
 import type { Sale } from '../lib/types';
-import { Badge, Button, Card, Code, Note, Spinner } from '../components/ui';
+import {
+  Button,
+  Code,
+  DataList,
+  Entry,
+  Money,
+  Note,
+  Sheet,
+  Spinner,
+} from '../components/ui';
 import { SaleStatusBadge } from '../components/StatusBadge';
 
 /**
@@ -35,65 +43,65 @@ export function CheckoutReturn() {
   );
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <Card
-        title={paymeStatus === 'success' ? 'Payment completed' : 'Back from PayMe'}
-        actions={sale && <SaleStatusBadge status={sale.status} />}
-      >
-        {loading && <Spinner />}
-
-        {sale && (
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-slate-500 dark:text-slate-400">Item</dt>
-              <dd className="font-medium">{sale.productName}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500 dark:text-slate-400">Amount</dt>
-              <dd className="font-medium tabular-nums">
-                {formatMoney(sale.priceMinor, sale.currency)}
-              </dd>
-            </div>
-            {sale.buyerCardMask && (
-              <div className="flex justify-between">
-                <dt className="text-slate-500 dark:text-slate-400">Card</dt>
-                <dd className="font-mono text-xs">{sale.buyerCardMask}</dd>
-              </div>
-            )}
-          </dl>
-        )}
-
-        <div className="mt-5 flex gap-2">
-          <Link to="/sales">
-            <Button>See it on the Sales page</Button>
-          </Link>
-          <Link to="/checkout">
-            <Button variant="secondary">Take another payment</Button>
-          </Link>
+    <div className="mx-auto max-w-[42rem] space-y-8 py-4">
+      <header className="border-b border-rule-strong pb-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h1 className="font-serif text-[2rem] leading-tight tracking-[-0.015em] text-ink">
+            {paymeStatus === 'success' ? 'Payment completed' : 'Back from PayMe'}
+          </h1>
+          {sale && <SaleStatusBadge status={sale.status} />}
         </div>
-      </Card>
+      </header>
 
-      <Card title="What PayMe put in the URL">
-        <dl className="space-y-1.5 font-mono text-xs">
-          {[...params.entries()].map(([key, value]) => (
-            <div key={key} className="flex gap-3">
-              <dt className="w-48 shrink-0 text-slate-500 dark:text-slate-400">{key}</dt>
-              <dd className="break-all">{value}</dd>
+      {loading && <Spinner label="Reading the sale back" />}
+
+      {sale && (
+        <div className="space-y-5">
+          <div className="flex items-end justify-between gap-6 border-b border-rule pb-4">
+            <div>
+              <p className="font-serif text-[1.25rem] leading-snug text-ink">
+                {sale.productName}
+              </p>
+              {sale.buyerCardMask && (
+                <p className="mt-1 font-mono text-[11px] text-ink-faint">
+                  paid with {sale.buyerCardMask}
+                </p>
+              )}
             </div>
+            <Money minor={sale.priceMinor} currency={sale.currency} size="lg" minorUnits />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link to="/sales">
+              <Button>See it on the Sales page</Button>
+            </Link>
+            <Link to="/checkout">
+              <Button variant="secondary">Take another payment</Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      <Sheet title="What PayMe put in the URL">
+        <DataList>
+          {[...params.entries()].map(([key, value]) => (
+            <Entry key={key} term={key} wide>
+              {value}
+            </Entry>
           ))}
-        </dl>
+        </DataList>
         {params.get('payme_signature') && (
-          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-            <Badge tone="info">note</Badge> The redirect carries a{' '}
+          <p className="mt-4 border-t border-rule pt-3 text-[12px] leading-relaxed text-ink-soft">
+            The redirect carries a{' '}
             <Code>payme_signature</Code> too, computed the same way as the
-            callback's. It can be verified — but the redirect can also be skipped
-            entirely by a buyer who closes the tab, so it is never the thing that
-            fulfils an order.
+            callback&#8217;s. It can be verified — but the redirect can also be
+            skipped entirely by a buyer who closes the tab, so it is never the
+            thing that fulfils an order.
           </p>
         )}
-      </Card>
+      </Sheet>
 
-      <Note title="The status above did not come from this URL">
+      <Note tone="warning" title="The status above did not come from this URL">
         <p>
           It was read back from our own API, which only records a sale as paid
           from a signed callback or a synchronous <Code>pay-sale</Code> response.

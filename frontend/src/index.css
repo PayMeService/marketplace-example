@@ -1,5 +1,167 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Greenbar.
+   --------------------------------------------------------------------------
+   The palette starts from accounting paper: pale green bands on white, ruled
+   in hairlines, marked up in fountain-pen blue. That is not decoration — it is
+   the subject. This app is a ledger of money moving between a buyer, PayMe and
+   a seller's wallet, and it reads better as one.
+
+   Two rules the whole system rests on:
+
+     - Green is the GROUND, so green can never be the accent. The accent is
+       `pen`, an ink blue. It marks anything you can act on.
+     - `stamp` (red) is reserved for money going the wrong way — refunds,
+       chargebacks, failures. It is never used for emphasis.
+
+   Every semantic colour is a bare custom property that the dark block below
+   redefines. Components reference the Tailwind alias (`bg-paper`, `text-ink`)
+   and never a raw hex, so the dark theme costs one token block instead of a
+   `dark:` twin on every class string.
+   ========================================================================== */
+
+:root {
+  --ledger: #f0fff0; /* Honeydew — the page itself */
+  --ledger-alt: #e3f5e5; /* the printed band: zebra rows, grouped sections */
+  --paper: #ffffff; /* a sheet laid on the ledger */
+  --ink: #16261c; /* green-cast black, never a neutral grey */
+  --ink-soft: #47604f;
+  --ink-faint: #5f7a68;
+  --rule: #cbdfcc;
+  --rule-strong: #9ec0a4;
+  --pen: #1a3a6e;
+  --pen-wash: #e9f0fa;
+  --seal: #17693b;
+  --seal-wash: #e0f3e6;
+  --stamp: #a62b2b;
+  --stamp-wash: #fceaea;
+  --amber: #8a5a0b;
+  --amber-wash: #fbf1dc;
+}
+
+/* The carbon copy. Same document, pressed through. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ledger: #0a140e;
+    --ledger-alt: #1b2e22;
+    --paper: #14231a;
+    --ink: #e6f4e9;
+    --ink-soft: #a0b9a8;
+    --ink-faint: #83a08c;
+    --rule: #263b2e;
+    --rule-strong: #3b5946;
+    --pen: #93b8f2;
+    --pen-wash: #142441;
+    --seal: #74ce95;
+    --seal-wash: #12301d;
+    --stamp: #ef9b9b;
+    --stamp-wash: #35191a;
+    --amber: #e3b76a;
+    --amber-wash: #33280f;
+  }
+}
+
+:root[data-theme='dark'] {
+  --ledger: #0a140e;
+  --ledger-alt: #1b2e22;
+  --paper: #14231a;
+  --ink: #e6f4e9;
+  --ink-soft: #a0b9a8;
+  --ink-faint: #83a08c;
+  --rule: #263b2e;
+  --rule-strong: #3b5946;
+  --pen: #93b8f2;
+  --pen-wash: #142441;
+  --seal: #74ce95;
+  --seal-wash: #12301d;
+  --stamp: #ef9b9b;
+  --stamp-wash: #35191a;
+  --amber: #e3b76a;
+  --amber-wash: #33280f;
+}
+
+@theme inline {
+  --color-ledger: var(--ledger);
+  --color-ledger-alt: var(--ledger-alt);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-pen: var(--pen);
+  --color-pen-wash: var(--pen-wash);
+  --color-seal: var(--seal);
+  --color-seal-wash: var(--seal-wash);
+  --color-stamp: var(--stamp);
+  --color-stamp-wash: var(--stamp-wash);
+  --color-amber: var(--amber);
+  --color-amber-wash: var(--amber-wash);
+
+  --font-sans: 'Public Sans', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Newsreader', ui-serif, Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono',
+    Menlo, monospace;
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+
+html {
+  background-color: var(--ledger);
+}
+
+body {
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Newsreader is an optical-size variable face. Left alone it sets headings at
+   the caption optical size, which looks spindly; pinning opsz to the display
+   end is what gives the titles their weight. */
+.font-serif {
+  font-variation-settings: 'opsz' 40;
+}
+
+::selection {
+  background: var(--pen);
+  color: var(--paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--pen);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+/* Amounts must never wobble between renders — a column of prices that shifts
+   as digits change is unreadable at a glance. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Greenbar tables
+   -------------------------------------------------------------------------- */
+
+/* The band is the whole point of ledger paper: it carries your eye across a
+   wide row without a vertical rule per column. */
+.greenbar tbody tr:nth-child(even) {
+  background-color: var(--ledger-alt);
+}
+
+.greenbar tbody tr:nth-child(even) td:first-child {
+  box-shadow: inset 2px 0 0 var(--rule);
+}
+
+/* --------------------------------------------------------------------------
+   PayMe Hosted Fields
+   -------------------------------------------------------------------------- */
+
 /* PayMe's Hosted Fields are cross-origin iframes we mount into our own form.
  * They size themselves to their container, so the container needs an explicit
  * height — an iframe with no intrinsic content height collapses to nothing and
@@ -10,4 +172,38 @@
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Motion
+   -------------------------------------------------------------------------- */
+
+/* One orchestrated moment in the whole app: the money-flow diagram on the
+   storefront draws itself once. Nothing else animates on arrival. */
+@keyframes draw-flow {
+  from {
+    stroke-dashoffset: var(--flow-length);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

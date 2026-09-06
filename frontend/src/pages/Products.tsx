@@ -1,21 +1,24 @@
 import { useState, type FormEvent } from 'react';
 import { del, get, post } from '../lib/api';
 import { useLoader } from '../lib/useLoader';
-import { CURRENCIES, formatMoney, PAYME_MIN_AMOUNT_MINOR, toMinorUnits } from '../lib/money';
+import { CURRENCIES, PAYME_MIN_AMOUNT_MINOR, toMinorUnits } from '../lib/money';
 import type { Product } from '../lib/types';
 import {
   Button,
-  Card,
   Code,
   EmptyState,
   ErrorBanner,
   Field,
   Input,
+  Ledger,
+  Money,
   Note,
+  Page,
   Select,
+  Sheet,
   Spinner,
   Td,
-  TableWrap,
+  TdPrimary,
   Textarea,
   Th,
 } from '../components/ui';
@@ -66,126 +69,142 @@ export function Products() {
     }
   }
 
+  async function remove(product: Product) {
+    if (!window.confirm(`Delete “${product.name}”? It disappears from the storefront.`)) {
+      return;
+    }
+    setError(null);
+    try {
+      await del(`/products/${product.id}`);
+      reload();
+    } catch (caught) {
+      setError(caught);
+    }
+  }
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-      <Card title="My products" description="Anything listed here can be sold through any of the three checkout flows.">
-        <ErrorBanner error={error} />
-        {loading && <Spinner />}
+    <Page
+      title="My products"
+      lede="Anything listed here can be sold through any of the three checkout flows, or bought directly from the storefront by another user."
+    >
+      <ErrorBanner error={error} />
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        {loading && <Spinner label="Loading your listings" />}
+
         {products && products.length === 0 && (
           <EmptyState title="No products yet">
-            Add one on the right to have something to charge for.
+            Add one alongside to have something to charge for.
           </EmptyState>
         )}
-        {products && products.length > 0 && (
-          <TableWrap>
-            <thead>
-              <tr>
-                <Th>Product</Th>
-                <Th>Price</Th>
-                <Th>Minor units</Th>
-                <Th> </Th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <Td>
-                    <p className="font-medium text-slate-900 dark:text-slate-100">
-                      {product.name}
-                    </p>
-                    {product.description && (
-                      <p className="mt-0.5 max-w-md text-xs text-slate-500 dark:text-slate-400">
-                        {product.description}
-                      </p>
-                    )}
-                  </Td>
-                  <Td>{formatMoney(product.priceMinor, product.currency)}</Td>
-                  <Td>
-                    <span className="font-mono text-xs">{product.priceMinor}</span>
-                  </Td>
-                  <Td>
-                    <Button
-                      variant="ghost"
-                      onClick={async () => {
-                        await del(`/products/${product.id}`);
-                        reload();
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </TableWrap>
-        )}
-      </Card>
 
-      <Card title="List a product">
-        <form onSubmit={submit} className="space-y-4">
-          <Field label="Name">
-            <Input
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-          </Field>
-          <Field label="Description">
-            <Textarea
-              rows={3}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-            />
-          </Field>
-          <div className="grid grid-cols-[1fr_110px] gap-3">
-            <Field
-              label="Price"
-              hint={
-                form.price
-                  ? `Sent to PayMe as ${priceMinor} minor units`
-                  : 'Enter it the way a buyer reads it, e.g. 50.75'
-              }
-              error={
-                belowMinimum
-                  ? `PayMe’s minimum is ${PAYME_MIN_AMOUNT_MINOR} minor units (5.00)`
-                  : undefined
-              }
-            >
+        {products && products.length > 0 && (
+          <Sheet flush>
+            <Ledger>
+              <thead>
+                <tr>
+                  <Th>Product</Th>
+                  <Th align="right">Price</Th>
+                  <Th>
+                    <span className="sr-only">Actions</span>
+                  </Th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((product) => (
+                  <tr key={product.id}>
+                    <TdPrimary name={product.name}>
+                      {product.description && (
+                        <p className="mt-1 max-w-[46ch] text-[12px] leading-relaxed text-ink-soft">
+                          {product.description}
+                        </p>
+                      )}
+                    </TdPrimary>
+                    <Td align="right">
+                      <Money
+                        minor={product.priceMinor}
+                        currency={product.currency}
+                        minorUnits
+                      />
+                    </Td>
+                    <Td align="right">
+                      <Button variant="ghost" onClick={() => remove(product)}>
+                        Delete
+                      </Button>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Ledger>
+          </Sheet>
+        )}
+
+        <Sheet title="List a product">
+          <form onSubmit={submit} className="space-y-4">
+            <Field label="Name">
               <Input
-                type="number"
-                step="0.01"
-                min="5"
                 required
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </Field>
-            <Field label="Currency">
-              <Select
-                value={form.currency}
-                onChange={(e) => setForm({ ...form, currency: e.target.value })}
-              >
-                {CURRENCIES.map((currency) => (
-                  <option key={currency}>{currency}</option>
-                ))}
-              </Select>
+            <Field label="Description">
+              <Textarea
+                rows={3}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
             </Field>
-          </div>
+            <div className="grid grid-cols-[1fr_7rem] gap-3">
+              <Field
+                label="Price"
+                hint={
+                  form.price
+                    ? `Sent to PayMe as ${priceMinor}`
+                    : 'Enter it the way a buyer reads it, e.g. 50.75'
+                }
+                error={
+                  belowMinimum
+                    ? `PayMe’s minimum is ${PAYME_MIN_AMOUNT_MINOR} minor units, i.e. 5.00`
+                    : undefined
+                }
+              >
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="5"
+                  required
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                />
+              </Field>
+              <Field label="Currency">
+                <Select
+                  value={form.currency}
+                  onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                >
+                  {CURRENCIES.map((currency) => (
+                    <option key={currency}>{currency}</option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
 
-          <Note title="Why minor units">
-            <p>
-              PayMe amounts are always integers in the currency's smallest unit.{' '}
-              <Code>sale_price: 5075</Code> is 50.75 — sending{' '}
-              <Code>50.75</Code> charges 50 agorot and is accepted without
-              complaint.
-            </p>
-          </Note>
+            <Note title="Why the second number">
+              <p>
+                PayMe amounts are always integers in the currency&#8217;s
+                smallest unit. <Code>sale_price: 5075</Code> is 50.75 — sending{' '}
+                <Code>50.75</Code> charges 50 agorot and is accepted without
+                complaint, so the integer is printed everywhere the price is.
+              </p>
+            </Note>
 
-          <Button type="submit" loading={busy} disabled={belowMinimum} className="w-full">
-            Add product
-          </Button>
-        </form>
-      </Card>
-    </div>
+            <Button type="submit" loading={busy} disabled={belowMinimum} className="w-full">
+              Add product
+            </Button>
+          </form>
+        </Sheet>
+      </div>
+    </Page>
   );
 }

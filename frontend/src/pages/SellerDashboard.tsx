@@ -2,17 +2,23 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { get, post } from '../lib/api';
 import { useLoader } from '../lib/useLoader';
-import { formatMoney } from '../lib/money';
 import type { Seller } from '../lib/types';
 import {
-  Badge,
   Button,
-  Card,
   Code,
+  DataList,
   EmptyState,
+  Entry,
   ErrorBanner,
+  Money,
   Note,
+  Page,
+  Rule,
+  Sheet,
+  Slip,
   Spinner,
+  Spread,
+  Stamp,
 } from '../components/ui';
 
 /**
@@ -23,8 +29,15 @@ import {
  * mean different things:
  *   wallet_total       everything PayMe holds for this seller
  *   wallet_releasable  the part past its release date, i.e. withdrawable now
- * The difference is money from recent sales still inside the clearing window.
+ * The difference is money from recent sales still inside the clearing window,
+ * which is why the two are shown as one figure split rather than as two totals.
  */
+/** 0.700000000000000000 -> 0.7, leaving anything non-numeric alone. */
+function formatFee(value: unknown): string {
+  const asNumber = Number(value);
+  return Number.isFinite(asNumber) ? String(asNumber) : String(value);
+}
+
 export function SellerDashboard() {
   const {
     data: seller,
@@ -34,40 +47,40 @@ export function SellerDashboard() {
   } = useLoader(() => get<Seller | null>('/sellers/me'));
   const [busy, setBusy] = useState(false);
 
-  if (loading) return <Spinner label="Reading your seller from PayMe…" />;
+  if (loading) return <Spinner label="Reading your seller from PayMe" />;
 
   if (!seller) {
     return (
       <EmptyState title="You do not have a PayMe seller yet">
-        <Link to="/sell" className="text-indigo-600 hover:underline">
-          Open one — it takes one create-seller call
-        </Link>
+        <Link to="/sell" className="text-pen underline underline-offset-2">
+          Open one
+        </Link>{' '}
+        — it takes a single create-seller call, and you can keep listing products
+        in the meantime.
       </EmptyState>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{seller.businessName}</h1>
-          <p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">
-            {seller.paymeId}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge tone={seller.approved ? 'success' : 'warning'}>
-            {seller.approved ? 'Approved' : 'Awaiting document verification'}
-          </Badge>
-          <Badge tone={seller.active ? 'success' : 'danger'}>
-            {seller.active ? 'Active' : 'Inactive'}
-          </Badge>
+    <Page
+      title={seller.businessName}
+      lede={
+        <p className="break-all font-mono text-[12px] text-ink-faint">{seller.paymeId}</p>
+      }
+      actions={
+        <>
+          <Stamp tone={seller.approved ? 'success' : 'warning'}>
+            {seller.approved ? 'approved' : 'awaiting documents'}
+          </Stamp>
+          <Stamp tone={seller.active ? 'success' : 'danger'}>
+            {seller.active ? 'active' : 'inactive'}
+          </Stamp>
           <Button variant="secondary" loading={busy} onClick={reload}>
             Refresh from PayMe
           </Button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <ErrorBanner error={error} />
 
       {seller.remoteError && (
@@ -82,160 +95,211 @@ export function SellerDashboard() {
       {!seller.approved && (
         <Note tone="warning" title="You can take payments, but not withdraw yet">
           <p>
-            PayMe holds funds until three documents are verified — social ID,
-            bank account and corporate certificate. Sales work in the meantime;{' '}
-            <Code>wallet_releasable</Code> stays at zero until approval.
+            PayMe pays out only once three documents are verified — social ID,
+            bank account and corporate certificate. Sales work in the meantime,
+            and <Code>wallet_releasable</Code> keeps growing as each sale passes
+            its release date, but <Code>withdraw-balance</Code> is refused
+            however large that balance gets.
           </p>
           {seller.signupLink && (
-            <p className="mt-1">
+            <p>
               <a
                 href={seller.signupLink}
                 target="_blank"
                 rel="noreferrer"
-                className="font-medium underline"
+                className="font-medium text-pen underline underline-offset-2"
               >
-                Complete onboarding on PayMe →
+                Finish onboarding on PayMe
               </a>
             </p>
           )}
         </Note>
       )}
 
-      <Card
-        title="Balance"
-        description="From seller_wallets on get-sellers. Amounts are in minor units on the wire."
+      <Spread
+        aside={
+          <Note title="Two numbers, not one">
+            <p>
+              <Code>wallet_total</Code> is everything PayMe holds for you.{' '}
+              <Code>wallet_releasable</Code> is the part past its release date.
+              The gap is money from recent sales still inside the clearing
+              window — it is yours, it just is not payable yet.
+            </p>
+          </Note>
+        }
       >
+        <Rule label="Balance" hint="seller_wallets" />
+
         {seller.balances.length === 0 ? (
           <EmptyState title="No wallet activity yet">
-            A wallet appears once the seller's first sale settles.
+            A wallet appears in <Code>get-sellers</Code> once this seller&#8217;s
+            first sale settles.
           </EmptyState>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {seller.balances.map((balance) => (
-              <div
-                key={balance.currency}
-                className="rounded-lg border border-slate-200 p-4 dark:border-slate-800"
-              >
-                <div className="flex items-baseline justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {seller.balances.map((balance) => {
+              const share = balance.total
+                ? Math.round((balance.releasable / balance.total) * 100)
+                : 0;
+              return (
+                <Slip key={balance.currency} tone="pen">
+                  <p className="font-mono text-[11px] text-ink-faint">
                     {balance.currency}
-                  </span>
-                  <span className="font-mono text-xs text-slate-400">
-                    {balance.total} minor
-                  </span>
-                </div>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">
-                  {formatMoney(balance.total, balance.currency)}
-                </p>
-                <dl className="mt-3 space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500 dark:text-slate-400">
-                      Available to withdraw
-                    </dt>
-                    <dd className="font-medium text-emerald-700 dark:text-emerald-400">
-                      {formatMoney(balance.releasable, balance.currency)}
-                    </dd>
+                  </p>
+                  <div className="mt-1">
+                    <Money minor={balance.total} currency={balance.currency} size="xl" />
                   </div>
-                  <div className="flex justify-between">
-                    <dt
-                      className="text-slate-500 dark:text-slate-400"
-                      title="Paid, but still inside PayMe's clearing window"
-                    >
-                      Clearing
-                    </dt>
-                    <dd className="font-medium">
-                      {formatMoney(balance.pending, balance.currency)}
-                    </dd>
+
+                  {/* The split IS the information here, so it is drawn rather
+                      than written twice: the filled part is withdrawable now. */}
+                  <div
+                    className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-rule"
+                    role="presentation"
+                  >
+                    <span className="bg-seal" style={{ width: `${share}%` }} />
                   </div>
-                </dl>
-              </div>
-            ))}
+
+                  <dl className="mt-3 space-y-1.5 text-[13px]">
+                    <div className="flex items-baseline justify-between gap-4">
+                      <dt className="text-ink-soft">Available to withdraw</dt>
+                      <dd>
+                        <Money
+                          minor={balance.releasable}
+                          currency={balance.currency}
+                          size="sm"
+                          tone="seal"
+                        />
+                      </dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-4">
+                      <dt
+                        className="text-ink-soft"
+                        title="Paid, but still inside PayMe's clearing window"
+                      >
+                        Still clearing
+                      </dt>
+                      <dd>
+                        <Money
+                          minor={balance.pending}
+                          currency={balance.currency}
+                          size="sm"
+                        />
+                      </dd>
+                    </div>
+                  </dl>
+                </Slip>
+              );
+            })}
           </div>
         )}
-      </Card>
+      </Spread>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card
-          title="Integration keys"
-          description="What the browser is allowed to see, and what it is not."
-        >
-          <dl className="space-y-4 text-sm">
-            <div>
-              <dt className="font-medium">
-                seller_payme_id <Badge tone="neutral">server + client</Badge>
-              </dt>
-              <dd className="mt-1 break-all font-mono text-xs text-slate-600 dark:text-slate-400">
-                {seller.paymeId}
-              </dd>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Identifies the seller on every PayMe call. Not a secret, but it
-                is always sent from the server.
-              </p>
-            </div>
-            <div>
-              <dt className="font-medium">
-                Public key <Badge tone="success">safe in the browser</Badge>
-              </dt>
-              <dd className="mt-1 break-all font-mono text-xs text-slate-600 dark:text-slate-400">
-                {seller.publicKey ?? 'not fetched'}
-              </dd>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Hosted Fields is initialised with this. Its only power is to open
-                a tokenization session against PayMe's vault.
-              </p>
-              <Button
-                variant="secondary"
-                className="mt-2"
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    await post('/sellers/me/public-key/refresh');
-                    reload();
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Re-fetch from PayMe
-              </Button>
-            </div>
-            <div>
-              <dt className="font-medium">
-                seller_payme_secret <Badge tone="danger">server only</Badge>
-              </dt>
-              <dd className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Returned once by create-seller and never sent to this page. It
-                can act as the seller.
-              </dd>
-            </div>
-          </dl>
-        </Card>
-
-        <Card title="Fees" description="PayMe's own rates for this seller, plus the marketplace's cut.">
-          <div className="mb-4 rounded-lg bg-indigo-50 p-3 dark:bg-indigo-950/30">
-            <p className="text-sm">
-              <span className="font-semibold">{seller.marketFee}%</span> marketplace
-              fee (<Code>market_fee</Code>) on the <Code>{seller.planId}</Code>{' '}
-              plan — charged on top of PayMe's fees and paid out to the
-              marketplace monthly.
+      <Spread
+        aside={
+          <Note title="Why the secret is not here">
+            <p>
+              <Code>seller_payme_secret</Code> comes back once from
+              create-seller and can act as the seller. It is stored{' '}
+              <code className="font-mono">select: false</code> and never enters a
+              view model, so no amount of poking at this page will reveal it.
             </p>
-          </div>
-          {seller.fees ? (
-            <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 font-mono text-xs">
-              {Object.entries(seller.fees)
-                .filter(([, value]) => value !== null)
-                .map(([key, value]) => (
-                  <div key={key} className="contents">
-                    <dt className="truncate text-slate-500 dark:text-slate-400">{key}</dt>
-                    <dd className="text-right tabular-nums">{value}</dd>
-                  </div>
-                ))}
-            </dl>
-          ) : (
-            <p className="text-sm text-slate-500">Fees unavailable.</p>
-          )}
-        </Card>
-      </div>
-    </div>
+          </Note>
+        }
+      >
+        <Rule label="Integration keys" hint="what the browser may see" />
+
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+          <Sheet title="Identity and keys">
+            <div className="space-y-5 text-[13px]">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[12px] text-ink">seller_payme_id</span>
+                  <Stamp>server and client</Stamp>
+                </div>
+                <p className="mt-1 break-all font-mono text-[11px] text-ink-soft">
+                  {seller.paymeId}
+                </p>
+                <p className="mt-1 leading-relaxed text-ink-soft">
+                  Identifies the seller on every PayMe call. Not a secret, but it
+                  is always sent from the server.
+                </p>
+              </div>
+
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[12px] text-ink">public key</span>
+                  <Stamp tone="success">safe in the browser</Stamp>
+                </div>
+                <p className="mt-1 break-all font-mono text-[11px] text-ink-soft">
+                  {seller.publicKey ?? 'not fetched'}
+                </p>
+                <p className="mt-1 leading-relaxed text-ink-soft">
+                  Hosted Fields is initialised with this. Its only power is to
+                  open a tokenization session against PayMe&#8217;s vault.
+                </p>
+                <Button
+                  variant="secondary"
+                  className="mt-2.5"
+                  loading={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      await post('/sellers/me/public-key/refresh');
+                      reload();
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Re-fetch from PayMe
+                </Button>
+              </div>
+
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[12px] text-ink">
+                    seller_payme_secret
+                  </span>
+                  <Stamp tone="danger">server only</Stamp>
+                </div>
+                <p className="mt-1 leading-relaxed text-ink-soft">
+                  Returned once by create-seller and never sent to this page.
+                </p>
+              </div>
+            </div>
+          </Sheet>
+
+          <Sheet title="Fees" description="PayMe’s rates for this seller, plus the marketplace’s cut.">
+            <Slip tone="amber" className="mb-4">
+              <p className="text-[13px] leading-relaxed text-ink">
+                The marketplace keeps{' '}
+                <span className="font-mono font-semibold">{seller.marketFee}%</span> of
+                every sale as <Code>market_fee</Code>, set by the{' '}
+                <Code>{seller.planId}</Code> plan. It is charged on top of
+                PayMe&#8217;s own fees and paid out to the marketplace monthly.
+              </p>
+            </Slip>
+
+            {seller.fees ? (
+              <DataList>
+                {Object.entries(seller.fees)
+                  .filter(([, value]) => value !== null)
+                  .map(([key, value]) => (
+                    <Entry key={key} term={key}>
+                      <span className="tabular font-mono text-[12px]">
+                        {formatFee(value)}
+                      </span>
+                    </Entry>
+                  ))}
+              </DataList>
+            ) : (
+              <p className="text-[13px] text-ink-soft">
+                PayMe did not return a fee schedule for this seller.
+              </p>
+            )}
+          </Sheet>
+        </div>
+      </Spread>
+    </Page>
   );
 }
