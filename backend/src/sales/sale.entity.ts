@@ -69,10 +69,10 @@ export class Sale {
   /**
    * PayMe's transaction id for the completed payment.
    *
-   * Note this is a different thing from `transaction_id` on a generate-sale
-   * request, which is YOUR order id. PayMe uses the same word for both. This
-   * column holds PayMe's guid, which is half the input to the callback
-   * signature.
+   * Note this is a different thing from the `transaction_id` you SEND on a
+   * generate-sale request, which is YOUR order id. PayMe uses the same word for
+   * both. This column holds PayMe's guid, which is half the input to the
+   * callback signature.
    */
   @Column({ type: 'varchar', length: 128, nullable: true })
   paymeTransactionId: string | null;

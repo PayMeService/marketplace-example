@@ -107,8 +107,8 @@ export class CallbacksService {
    *
    * Signature input: client_key + client_secret + transaction_id + sub_payme_id
    *
-   * `transaction_id` here is PayMe's transaction guid — NOT your own order id,
-   * which is what the identically-named field means on sale callbacks.
+   * `transaction_id` here is PayMe's transaction guid — the same value a sale
+   * callback delivers under the key `payme_transaction_id`.
    *
    * `sub-create` legitimately arrives unsigned: nothing has been charged yet,
    * so there is no transaction to sign. It is recorded and, because it carries
