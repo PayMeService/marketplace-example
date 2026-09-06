@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { get, post } from '../lib/api';
 import { useLoader } from '../lib/useLoader';
 import type { Seller } from '../lib/types';
+import { storeAvatarUrl } from '../lib/dicebear';
 import {
   Button,
   Code,
@@ -63,7 +64,16 @@ export function SellerDashboard() {
 
   return (
     <Page
-      title={seller.businessName}
+      title={
+        <span className="flex items-center gap-4">
+          <img
+            src={storeAvatarUrl(seller.id)}
+            alt=""
+            className="size-14 rounded-full bg-ledger-alt"
+          />
+          {seller.businessName}
+        </span>
+      }
       lede={
         <p className="break-all font-mono text-[12px] text-ink-faint">{seller.paymeId}</p>
       }
@@ -136,30 +146,43 @@ export function SellerDashboard() {
             first sale settles.
           </EmptyState>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div
+            className={`grid gap-5 ${seller.balances.length > 1 ? 'sm:grid-cols-2' : ''}`}
+          >
             {seller.balances.map((balance) => {
               const share = balance.total
                 ? Math.round((balance.releasable / balance.total) * 100)
                 : 0;
               return (
-                <Slip key={balance.currency} tone="pen">
-                  <p className="font-mono text-[11px] text-ink-faint">
-                    {balance.currency}
-                  </p>
-                  <div className="mt-1">
-                    <Money minor={balance.total} currency={balance.currency} size="xl" />
+                <div
+                  key={balance.currency}
+                  className="rounded-2xl border border-rule bg-paper p-6 shadow-[0_2px_10px_rgba(16,22,25,0.05)]"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <Stamp>{balance.currency.toLowerCase()}</Stamp>
+                    <span className="tabular font-mono text-[11px] text-ink-faint">
+                      {balance.total} minor
+                    </span>
+                  </div>
+
+                  <div className="mt-4">
+                    <Money
+                      minor={balance.total}
+                      currency={balance.currency}
+                      size="xxl"
+                    />
                   </div>
 
                   {/* The split IS the information here, so it is drawn rather
                       than written twice: the filled part is withdrawable now. */}
                   <div
-                    className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-rule"
+                    className="mt-5 flex h-2 overflow-hidden rounded-full bg-ledger-alt"
                     role="presentation"
                   >
                     <span className="bg-seal" style={{ width: `${share}%` }} />
                   </div>
 
-                  <dl className="mt-3 space-y-1.5 text-[13px]">
+                  <dl className="mt-4 space-y-2 text-[13.5px]">
                     <div className="flex items-baseline justify-between gap-4">
                       <dt className="text-ink-soft">Available to withdraw</dt>
                       <dd>
@@ -187,7 +210,7 @@ export function SellerDashboard() {
                       </dd>
                     </div>
                   </dl>
-                </Slip>
+                </div>
               );
             })}
           </div>

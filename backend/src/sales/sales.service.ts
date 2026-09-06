@@ -22,6 +22,7 @@ import { PayMeSettingsService } from '../settings/payme-settings.service';
 import { SellersService } from '../sellers/sellers.service';
 import { ProductsService } from '../products/products.service';
 import { Seller } from '../sellers/seller.entity';
+import { PAYME_MIN_AMOUNT_MINOR } from '../common/money';
 import { Sale, SaleFlow, SaleStatus, toSaleStatus } from './sale.entity';
 import {
   CreateHostedFieldsSaleDto,
@@ -174,6 +175,146 @@ export class SalesService {
     );
 
     return this.applyGenerateSaleResponse(sale, response);
+  }
+
+  /**
+   * A buyer checks out a cart.
+   *
+   * THIS IS WHERE A MARKETPLACE STOPS LOOKING LIKE A SHOP. `generate-sale`
+   * carries exactly one `seller_payme_id`, one `sale_price` and one
+   * `product_name`, so a sale can only ever pay a single seller. A cart holding
+   * items from two shops is therefore not one payment that gets divided later —
+   * it is two payments, created together, each landing in its own wallet, each
+   * with its own `market_fee` and its own callback.
+   *
+   * The grouping key is (seller, currency) rather than seller alone, because a
+   * sale also carries exactly one `currency`. A seller listing in both ILS and
+   * USD gets one sale per currency.
+   *
+   * Returns one sale per group, in a stable order, so the checkout screen can
+   * show the buyer what they are actually about to pay and why there is more
+   * than one of them.
+   */
+  async buyCart(
+    buyerUserId: string,
+    items: Array<{ productId: string; quantity: number }>,
+    options: { buyerName?: string; buyerEmail?: string } = {},
+  ): Promise<Sale[]> {
+    // Collapse duplicate lines first: two entries for the same listing are one
+    // line with a larger quantity, not two.
+    const quantities = new Map<string, number>();
+    for (const item of items) {
+      quantities.set(
+        item.productId,
+        (quantities.get(item.productId) ?? 0) + item.quantity,
+      );
+    }
+
+    const lines = await Promise.all(
+      [...quantities].map(async ([productId, quantity]) => ({
+        product: await this.products.findById(productId),
+        quantity,
+      })),
+    );
+
+    for (const { product } of lines) {
+      if (!product.active) {
+        throw new BadRequestException(
+          `“${product.name}” is no longer for sale. Remove it from your cart to continue.`,
+        );
+      }
+      if (product.ownerId === buyerUserId) {
+        throw new BadRequestException(
+          `“${product.name}” is your own listing. You cannot buy from yourself.`,
+        );
+      }
+    }
+
+    // Resolve each owner to a seller once, not once per line.
+    const sellersByOwner = new Map<string, Seller>();
+    for (const { product } of lines) {
+      if (sellersByOwner.has(product.ownerId)) continue;
+      const seller = await this.sellers.findByUser(product.ownerId);
+      if (!seller) {
+        throw new BadRequestException(
+          `“${product.name}” cannot be bought yet: whoever listed it has not opened a PayMe seller account, so there is nowhere to send the money.`,
+        );
+      }
+      sellersByOwner.set(product.ownerId, seller);
+    }
+
+    const groups = new Map<
+      string,
+      { seller: Seller; currency: string; lines: typeof lines }
+    >();
+    for (const line of lines) {
+      const seller = sellersByOwner.get(line.product.ownerId)!;
+      const key = `${seller.id}:${line.product.currency}`;
+      const group = groups.get(key);
+      if (group) group.lines.push(line);
+      else
+        groups.set(key, {
+          seller,
+          currency: line.product.currency,
+          lines: [line],
+        });
+    }
+
+    const { environment } = await this.settings.get();
+    const created: Sale[] = [];
+
+    for (const group of groups.values()) {
+      const priceMinor = group.lines.reduce(
+        (total, line) => total + line.product.priceMinor * line.quantity,
+        0,
+      );
+
+      // PayMe checks its minimum against the whole sale, so it is the group
+      // total that has to clear it — not each line.
+      if (priceMinor < PAYME_MIN_AMOUNT_MINOR) {
+        throw new BadRequestException(
+          `The items from ${group.seller.businessName} come to less than PayMe’s ${PAYME_MIN_AMOUNT_MINOR} minor-unit minimum. Add something else from that shop, or remove it.`,
+        );
+      }
+
+      const sale = await this.sales.save(
+        this.sales.create({
+          sellerId: group.seller.id,
+          // Only meaningful when the sale really is one listing; a summed sale
+          // is not a row about a single product.
+          productId:
+            group.lines.length === 1 && group.lines[0].quantity === 1
+              ? group.lines[0].product.id
+              : null,
+          buyerUserId,
+          flow: SaleFlow.Iframe,
+          saleType: 'sale',
+          status: SaleStatus.Initial,
+          priceMinor,
+          currency: group.currency,
+          productName: describeCart(group.lines),
+          buyerName: options.buyerName ?? null,
+          buyerEmail: options.buyerEmail ?? null,
+        }),
+      );
+
+      const request = await this.buildGenerateSaleRequest(group.seller, sale, {
+        buyerName: options.buyerName,
+        buyerEmail: options.buyerEmail,
+      });
+      request.sale_payment_method = 'multi';
+      request.sale_return_url = await this.returnUrl(sale.id);
+
+      const response = await this.payme.request<GenerateSaleResponse>(
+        environment,
+        'generate-sale',
+        request,
+      );
+
+      created.push(await this.applyGenerateSaleResponse(sale, response));
+    }
+
+    return created;
   }
 
   // -------------------------------------------------------------------------
@@ -727,4 +868,26 @@ export class SalesService {
     }
     return sale;
   }
+}
+
+/**
+ * What the buyer sees on their statement and on PayMe's invoice.
+ *
+ * `product_name` is capped at 500 characters, and a cart can be longer than
+ * that, so a long one degrades to a count rather than being silently truncated
+ * mid-word by PayMe.
+ */
+function describeCart(
+  lines: Array<{ product: { name: string }; quantity: number }>,
+): string {
+  const parts = lines.map((line) =>
+    line.quantity > 1
+      ? `${line.quantity} × ${line.product.name}`
+      : line.product.name,
+  );
+  const joined = parts.join(', ');
+  if (joined.length <= 500) return joined;
+
+  const count = lines.reduce((total, line) => total + line.quantity, 0);
+  return `${count} items`;
 }

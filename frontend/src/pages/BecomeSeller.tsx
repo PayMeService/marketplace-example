@@ -150,7 +150,7 @@ export function BecomeSeller() {
     return (
       <div className="mx-auto max-w-[36rem] space-y-6 py-4">
         <header className="border-b border-rule-strong pb-5">
-          <h1 className="font-serif text-[2rem] leading-tight tracking-[-0.015em] text-ink">
+          <h1 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[2rem] leading-tight tracking-[-0.015em] text-ink">
             You already sell here
           </h1>
           <p className="mt-2 text-[14px] leading-relaxed text-ink-soft">
@@ -210,14 +210,14 @@ export function BecomeSeller() {
                 type="button"
                 aria-pressed={selected}
                 onClick={() => setChosenPlanId(plan.id)}
-                className={`flex flex-col items-stretch justify-start rounded-[3px] border bg-paper p-5 text-left transition-colors ${
+                className={`flex flex-col items-stretch justify-start rounded-2xl border bg-paper p-5 text-left shadow-[0_2px_10px_rgba(16,22,25,0.05)] transition-all duration-200 ${
                   selected
-                    ? 'border-pen border-t-[3px] border-t-pen'
-                    : 'border-rule border-t-[3px] border-t-rule-strong hover:border-t-ink-faint'
+                    ? 'border-transparent ring-2 ring-ink'
+                    : 'border-rule hover:-translate-y-1 hover:shadow-[0_14px_40px_rgba(16,22,25,0.10)]'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-serif text-[17px] text-ink">{plan.name}</h3>
+                  <h3 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[17px] text-ink">{plan.name}</h3>
                   {plan.recommended && <Stamp tone="info">suggested</Stamp>}
                 </div>
 
@@ -277,7 +277,7 @@ export function BecomeSeller() {
             <ErrorBanner error={error} />
 
             <fieldset className="space-y-4">
-              <legend className="mb-3 w-full border-b border-rule pb-1.5 font-serif text-[15px] text-ink">
+              <legend className="mb-3 w-full border-b border-rule pb-1.5 font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[15px] text-ink">
                 The person
               </legend>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -325,7 +325,7 @@ export function BecomeSeller() {
             </fieldset>
 
             <fieldset className="space-y-4">
-              <legend className="mb-3 w-full border-b border-rule pb-1.5 font-serif text-[15px] text-ink">
+              <legend className="mb-3 w-full border-b border-rule pb-1.5 font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[15px] text-ink">
                 The business
               </legend>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -377,7 +377,7 @@ export function BecomeSeller() {
 
             <fieldset className="space-y-4">
               <legend className="mb-3 flex w-full items-baseline justify-between gap-3 border-b border-rule pb-1.5">
-                <span className="font-serif text-[15px] text-ink">Bank account</span>
+                <span className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[15px] text-ink">Bank account</span>
                 <span className="text-[12px] text-ink-faint">payouts land here</span>
               </legend>
               <div className="grid gap-4 sm:grid-cols-3">
@@ -394,7 +394,7 @@ export function BecomeSeller() {
             </fieldset>
 
             <fieldset className="space-y-4">
-              <legend className="mb-3 w-full border-b border-rule pb-1.5 font-serif text-[15px] text-ink">
+              <legend className="mb-3 w-full border-b border-rule pb-1.5 font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[15px] text-ink">
                 Business address
               </legend>
               <div className="grid gap-4 sm:grid-cols-4">

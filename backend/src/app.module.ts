@@ -8,6 +8,7 @@ import { SettingsModule } from './settings/settings.module';
 import { AuthModule } from './auth/auth.module';
 import { SellersModule } from './sellers/sellers.module';
 import { ProductsModule } from './products/products.module';
+import { StoresModule } from './stores/stores.module';
 import { SalesModule } from './sales/sales.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { CallbacksModule } from './callbacks/callbacks.module';
@@ -52,6 +53,7 @@ import { AdminModule } from './admin/admin.module';
     AuthModule,
     SellersModule,
     ProductsModule,
+    StoresModule,
     SalesModule,
     SubscriptionsModule,
     CallbacksModule,

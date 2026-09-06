@@ -54,7 +54,7 @@ export function MoneyFlow() {
           <rect x="430" y="98" width="14" height="62" fill="var(--ink)" />
 
           <g fill="var(--ink)" style={{ animation: 'fade-in .5s ease-out .1s both' }}>
-            <text x="16" y="124" className="font-serif" fontSize="19">
+            <text x="16" y="124" className="font-[family-name:var(--font-display)]" fontSize="19">
               Buyer
             </text>
             <text x="16" y="145" className="font-mono" fontSize="10.5" fill="var(--ink-faint)">
@@ -75,7 +75,7 @@ export function MoneyFlow() {
           </text>
 
           <g style={{ animation: 'fade-in .4s ease-out .5s both' }}>
-            <text x="437" y="88" className="font-serif" fontSize="15" fill="var(--ink)" textAnchor="middle">
+            <text x="437" y="88" className="font-[family-name:var(--font-display)]" fontSize="15" fill="var(--ink)" textAnchor="middle">
               PayMe
             </text>
             <text x="437" y="176" className="font-mono" fontSize="10.5" fill="var(--ink-faint)" textAnchor="middle">
@@ -96,14 +96,14 @@ export function MoneyFlow() {
           </text>
 
           <g style={{ animation: 'fade-in .5s ease-out 1.25s both' }}>
-            <text x="716" y="130" className="font-serif" fontSize="18" fill="var(--ink)">
+            <text x="716" y="130" className="font-[family-name:var(--font-display)]" fontSize="18" fill="var(--ink)">
               The seller&#8217;s wallet
             </text>
             <text x="716" y="150" className="font-mono" fontSize="10.5" fill="var(--ink-faint)">
               seller_payme_id
             </text>
 
-            <text x="716" y="58" className="font-serif" fontSize="16" fill="var(--ink)">
+            <text x="716" y="58" className="font-[family-name:var(--font-display)]" fontSize="16" fill="var(--ink)">
               Marketplace
             </text>
             <text x="716" y="77" className="font-mono" fontSize="10.5" fill="var(--amber)">

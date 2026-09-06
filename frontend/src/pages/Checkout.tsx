@@ -109,13 +109,13 @@ export function Checkout() {
               type="button"
               aria-pressed={selected}
               onClick={() => setFlow(item.id)}
-              className={`flex flex-col items-stretch justify-start rounded-[3px] border bg-paper p-4 text-left transition-colors ${
+              className={`flex flex-col items-stretch justify-start rounded-2xl border bg-paper p-5 text-left shadow-[0_2px_10px_rgba(16,22,25,0.05)] transition-all duration-200 ${
                 selected
-                  ? 'border-pen border-t-[3px] border-t-pen'
-                  : 'border-rule border-t-[3px] border-t-rule-strong hover:border-t-ink-faint'
+                  ? 'border-transparent ring-2 ring-ink'
+                  : 'border-rule hover:-translate-y-1 hover:shadow-[0_14px_40px_rgba(16,22,25,0.10)]'
               }`}
             >
-              <h3 className="font-serif text-[16px] text-ink">{item.title}</h3>
+              <h3 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[16px] text-ink">{item.title}</h3>
               <p className="mt-1 font-mono text-[10.5px] text-ink-faint">{item.calls}</p>
               <p className="mt-2.5 text-[13px] leading-relaxed text-ink-soft">{item.body}</p>
             </button>
@@ -736,7 +736,7 @@ function HostedFieldsCheckout({
           <>
             <Rule step={3} label="Charged" hint="pay-sale" />
             <Slip tone="seal">
-              <p className="font-serif text-[16px] text-seal">
+              <p className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[16px] text-seal">
                 {sale.status === 'authorized'
                   ? 'Authorized. Capture it from the Sales page within 168 hours.'
                   : 'Paid.'}

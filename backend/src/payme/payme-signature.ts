@@ -21,11 +21,11 @@ import { createHash, timingSafeEqual } from 'node:crypto';
  *
  * Two subtleties that cost people hours:
  *
- *  1. The subscription variant uses the callback's `transaction_id` field,
- *     which for subscriptions carries PayMe's TRANSACTION guid. On sale
- *     callbacks the identically-named `transaction_id` is YOUR order id and is
- *     NOT part of the hash — the sale hash uses `payme_transaction_id`. Same
- *     field name, different meaning, different flow. Mixing them up produces a
+ *  1. The third value is always PayMe's TRANSACTION guid, never the order id
+ *     you sent. It simply arrives under a different key per flow: sale
+ *     callbacks carry it as `payme_transaction_id`, subscription callbacks as
+ *     `transaction_id`. The `transaction_id` you SEND on generate-sale is your
+ *     own order id and is not part of any hash — feeding it in produces a
  *     mismatch that looks like a wrong secret.
  *
  *  2. `payme_signature` is null when a callback has no completed transaction
@@ -161,8 +161,8 @@ export function verifySaleSignature(
  * Verify a subscription callback (sub-active, sub-iteration-success, ...).
  * Hash input: client_key + client_secret + transaction_id + sub_payme_id.
  *
- * Careful: `transaction_id` here is PayMe's transaction guid, unlike on sale
- * callbacks where the same key holds YOUR order id.
+ * `transaction_id` here is PayMe's transaction guid — the same value a sale
+ * callback delivers under the key `payme_transaction_id`.
  */
 export function verifySubscriptionSignature(
   body: Record<string, unknown>,

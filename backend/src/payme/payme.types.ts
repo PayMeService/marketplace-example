@@ -137,7 +137,7 @@ export interface GenerateSaleRequest {
   currency: string;
   /** Shown to the buyer and on the invoice. Max 500 chars. */
   product_name: string;
-  /** Your own order id. Comes back on the callback so you can correlate. */
+  /** Your own order id, for correlation. Never part of a signature. */
   transaction_id?: string;
   /**
    * "1".."12" fixes the count; "103"/"106"/"109"/"112" lets the buyer pick up
@@ -220,7 +220,7 @@ export interface PayMeSaleDetails extends PayMeEnvelope {
   sale_status: string;
   payme_sale_status?: string;
   currency: string;
-  /** YOUR order id, echoed back. */
+  /** On a callback, PayMe's transaction guid; on an API response, the id you sent. */
   transaction_id: string | null;
   is_token_sale: boolean;
   price: number;

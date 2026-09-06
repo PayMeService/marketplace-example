@@ -3,6 +3,7 @@ import { get, post } from '../lib/api';
 import { useLoader } from '../lib/useLoader';
 import { formatMoney } from '../lib/money';
 import type { AdminSeller } from '../lib/types';
+import { storeAvatarUrl } from '../lib/dicebear';
 import {
   Button,
   Code,
@@ -19,7 +20,6 @@ import {
   Spread,
   Stamp,
   Td,
-  TdPrimary,
   Th,
 } from '../components/ui';
 
@@ -191,15 +191,29 @@ export function AdminSellers() {
 
                   return (
                     <tr key={seller.id}>
-                      <TdPrimary name={seller.businessName} id={seller.paymeId}>
-                        {seller.owner && (
-                          <p className="mt-1 text-[11px] leading-snug text-ink-faint">
-                            {seller.owner.name}
-                            <br />
-                            {seller.owner.email}
-                          </p>
-                        )}
-                      </TdPrimary>
+                      <Td>
+                        <div className="flex items-start gap-3.5">
+                          <img
+                            src={storeAvatarUrl(seller.owner?.id ?? seller.id)}
+                            alt=""
+                            loading="lazy"
+                            className="size-11 shrink-0 rounded-full bg-ledger-alt"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium text-ink">{seller.businessName}</p>
+                            <p className="mt-0.5 break-all font-mono text-[10px] text-ink-faint">
+                              {seller.paymeId}
+                            </p>
+                            {seller.owner && (
+                              <p className="mt-1 text-[11px] leading-snug text-ink-faint">
+                                {seller.owner.name}
+                                <br />
+                                {seller.owner.email}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </Td>
 
                       {/* The fee is edited where it is displayed rather than
                           through a window.prompt, which could not show PayMe's

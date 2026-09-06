@@ -1,11 +1,16 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './lib/auth';
+import { CartProvider } from './lib/cart';
 import { useAuth } from './lib/auth-context';
 import { Layout } from './components/Layout';
 import { Spinner } from './components/ui';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Storefront } from './pages/Storefront';
+import { Stores } from './pages/Stores';
+import { Store } from './pages/Store';
+import { Cart } from './pages/Cart';
+import { BuyerCheckout } from './pages/BuyerCheckout';
 import { Products } from './pages/Products';
 import { BecomeSeller } from './pages/BecomeSeller';
 import { SellerDashboard } from './pages/SellerDashboard';
@@ -36,11 +41,18 @@ function Protected({
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <CartProvider>
+        <BrowserRouter>
         <Routes>
+          {/* Outside the shell: each storefront variant supplies its own
+              navigation, which is part of what is being compared. */}
+          <Route path="/" element={<Storefront />} />
+
           <Route element={<Layout />}>
-            <Route index element={<Storefront />} />
             <Route path="login" element={<Login />} />
+            <Route path="stores" element={<Stores />} />
+            <Route path="store/:storeId" element={<Store />} />
+            <Route path="cart" element={<Cart />} />
             <Route path="register" element={<Register />} />
 
             <Route
@@ -77,8 +89,19 @@ export default function App() {
                 </Protected>
               }
             />
+            {/* The buyer's checkout. The seller-initiated one that used to
+                live here is at /take-payment — a different job for a different
+                person, and only the buyer's belongs on this path. */}
             <Route
               path="checkout"
+              element={
+                <Protected>
+                  <BuyerCheckout />
+                </Protected>
+              }
+            />
+            <Route
+              path="take-payment"
               element={
                 <Protected roles={['seller', 'admin']}>
                   <Checkout />
@@ -132,7 +155,8 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </CartProvider>
     </AuthProvider>
   );
 }

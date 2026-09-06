@@ -264,8 +264,9 @@ export class SellersService {
    *   wallet_total      everything in the wallet, in minor units
    *   wallet_releasable the part past its release date, i.e. withdrawable now
    * The gap between them is money from sales still inside PayMe's clearing
-   * window. Until PayMe has verified the seller's documents, nothing is
-   * releasable at all.
+   * window. Approval does not enter into this figure: `wallet_releasable`
+   * recalculates as sales clear whether or not the seller's documents have
+   * been verified. It is `withdraw-balance` that PayMe refuses until then.
    */
   async fetchFromPayMe(paymeIds: string[]): Promise<PayMeSellerSummary[]> {
     if (!paymeIds.length) return [];

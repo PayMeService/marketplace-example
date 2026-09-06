@@ -35,9 +35,9 @@ If you read nothing else:
    body for validation failures. Never branch on the HTTP status.
 3. **Verify `payme_signature` before acting on a callback.** The endpoint is
    public and unauthenticated; the signature is the whole of its security.
-4. **`transaction_id` means two different things.** Your order id on a sale
-   callback; PayMe's transaction guid on a subscription callback. The signature
-   inputs differ accordingly.
+4. **`transaction_id` means two different things.** Your order id on the way
+   out (`generate-sale`); PayMe's transaction guid on the way back (callbacks).
+   Only PayMe's guid is ever hashed.
 5. **PayMe validates the URLs you send it.** Both `sale_callback_url` and
    `sale_return_url` are checked at request time; a localhost URL fails the whole
    `generate-sale` call with error 21, not just the notification.

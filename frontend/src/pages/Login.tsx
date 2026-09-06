@@ -29,7 +29,7 @@ export function Login() {
     /* No sheet around this one. A four-field form on the ledger needs a rule to
        sit on, not a box to sit in. */
     <div className="mx-auto max-w-[22rem] py-6">
-      <h1 className="font-serif text-[2rem] leading-tight tracking-[-0.015em] text-ink">
+      <h1 className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[2rem] leading-tight tracking-[-0.015em] text-ink">
         Sign in
       </h1>
       <hr className="mt-4 mb-6 border-0 border-t border-rule-strong" />

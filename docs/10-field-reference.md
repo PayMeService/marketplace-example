@@ -54,7 +54,7 @@ Returns `seller_payme_id`, `seller_payme_secret` (once only), `seller_public_key
 | `sale_price` | **number** | ✓ | Minor units, ≥ 500. |
 | `currency` | string | ✓ | ISO 4217. |
 | `product_name` | string | ✓ | ≤ 500 chars. Shown to the buyer and on the invoice. |
-| `transaction_id` | string | — | **Your** order id. Echoed on callbacks. |
+| `transaction_id` | string | — | **Your** order id, for correlation. Not the callback field of the same name, which carries PayMe's transaction guid. |
 | `installments` | **string** | — | `"1"`–`"12"` fixed; `"103"`/`"106"`/`"109"`/`"112"` buyer-selectable up to 3/6/9/12. |
 | `sale_type` | string | — | `sale` (J4, default), `authorize` (J5), `template`. |
 | `sale_payment_method` | string | — | `credit-card` default; `multi` lets the buyer choose. |

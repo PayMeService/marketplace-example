@@ -37,14 +37,17 @@ endpoint does not leak the expected value byte by byte — `digestsMatch` in
 
 ## The trap: `transaction_id` means two different things
 
-| Callback | Field carrying PayMe's transaction guid | What `transaction_id` holds |
-|---|---|---|
-| Sale | `payme_transaction_id` | **your** order id (echoed from `generate-sale`) |
-| Subscription | `transaction_id` | **PayMe's** transaction guid |
+| Where | What `transaction_id` holds |
+|---|---|
+| `generate-sale` request (outbound) | **your** order id |
+| Sale callback | **PayMe's** transaction guid — also present as `payme_transaction_id`, the key the sale hash reads |
+| Subscription callback | **PayMe's** transaction guid — the key the subscription hash reads |
 
-Same field name, opposite meaning, and the signature input differs accordingly.
-Using the wrong one produces a mismatch that looks exactly like a wrong secret,
-which sends you off checking credentials that were fine all along.
+The third value in the hash is always PayMe's transaction guid; the only thing
+that changes between the two flows is which key carries it. The order id you
+sent is never hashed, and feeding it in produces a mismatch that looks exactly
+like a wrong secret, which sends you off checking credentials that were fine all
+along.
 
 `verifySaleSignature` and `verifySubscriptionSignature` are separate functions
 for this reason — there is no shared "verify" that takes a field name, because

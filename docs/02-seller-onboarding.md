@@ -113,8 +113,9 @@ until PayMe verifies three documents: social ID, bank account, and corporate
 certificate. Meanwhile:
 
 - **Payments work.** The seller can take money from the moment the MPL exists.
-- **Payouts do not.** Funds accumulate but `wallet_releasable` stays at zero and
-  `withdraw-balance` is refused.
+- **Payouts do not.** `wallet_releasable` still recalculates as sales pass
+  their release date, so the seller can be looking at a healthy withdrawable
+  figure — but `withdraw-balance` is refused until the documents are verified.
 
 So: do not gate checkout on approval — that stops sellers earning for no reason.
 Do surface the state and the `seller_dashboard_signup_link` prominently, because

@@ -23,6 +23,14 @@ export class ProductsService {
     });
   }
 
+  /** One store's public shelf: active listings only, newest first. */
+  async listActiveByOwner(ownerId: string): Promise<Product[]> {
+    return this.products.find({
+      where: { ownerId, active: true },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async listMine(ownerId: string): Promise<Product[]> {
     return this.products.find({
       where: { ownerId },

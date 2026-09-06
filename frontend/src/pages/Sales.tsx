@@ -3,6 +3,7 @@ import { get, post } from '../lib/api';
 import { useLoader } from '../lib/useLoader';
 import { fromMinorUnits, toMinorUnits } from '../lib/money';
 import type { Sale } from '../lib/types';
+import { avatarUrl } from '../lib/dicebear';
 import {
   Button,
   Code,
@@ -188,11 +189,25 @@ export function Sales() {
                       </Td>
 
                       <Td>
-                        {sale.buyerName ?? <span className="text-ink-faint">—</span>}
-                        {sale.buyerCardMask && (
-                          <span className="mt-0.5 block font-mono text-[10px] text-ink-faint">
-                            {sale.buyerCardMask}
+                        {sale.buyerName ? (
+                          <span className="flex items-center gap-2.5">
+                            <img
+                              src={avatarUrl(sale.buyerName)}
+                              alt=""
+                              loading="lazy"
+                              className="size-8 shrink-0 rounded-full bg-ledger-alt"
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate">{sale.buyerName}</span>
+                              {sale.buyerCardMask && (
+                                <span className="block font-mono text-[10px] text-ink-faint">
+                                  {sale.buyerCardMask}
+                                </span>
+                              )}
+                            </span>
                           </span>
+                        ) : (
+                          <span className="text-ink-faint">—</span>
                         )}
                       </Td>
 
@@ -269,7 +284,7 @@ export function Sales() {
           {ACTIONS.map((action) => (
             <div key={action.label} className="border-t border-rule pt-3">
               <div className="flex items-baseline justify-between gap-3">
-                <p className="font-serif text-[15px] text-ink">{action.label}</p>
+                <p className="font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[15px] text-ink">{action.label}</p>
                 <Code>{action.endpoint}</Code>
               </div>
               <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">

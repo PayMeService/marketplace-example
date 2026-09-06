@@ -12,6 +12,7 @@ import { JwtAuthGuard, JwtPayload } from '../auth/jwt-auth.guard';
 import { SalesService } from './sales.service';
 import { Sale } from './sale.entity';
 import {
+  BuyCartDto,
   BuyProductDto,
   CreateHostedFieldsSaleDto,
   CreateIframeSaleDto,
@@ -55,6 +56,21 @@ export class SalesController {
    * Open to any signed-in user, not just sellers: the seller is derived from
    * the listing. This is the flow an actual marketplace shopper takes.
    */
+  /**
+   * A buyer checks out a cart.
+   *
+   * Answers with an ARRAY of sales — one per seller in the cart, because a
+   * PayMe sale pays exactly one wallet. See SalesService.buyCart.
+   */
+  @Post('cart')
+  async buyCart(@CurrentUser() user: JwtPayload, @Body() dto: BuyCartDto) {
+    const sales = await this.sales.buyCart(user.sub, dto.items, {
+      buyerName: dto.buyerName,
+      buyerEmail: dto.buyerEmail,
+    });
+    return sales.map(toView);
+  }
+
   @Post('buy/:productId')
   async buy(
     @CurrentUser() user: JwtPayload,

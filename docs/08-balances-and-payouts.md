@@ -31,10 +31,12 @@ seller asks first.
 **1. The clearing window.** Ordinary settlement timing. `sale_release_date` on
 the sale details tells you when a given payment becomes releasable.
 
-**2. The seller is not approved.** PayMe holds *everything* until three
-documents are verified — social ID, bank account, corporate certificate. Until
-then `wallet_releasable` stays at zero no matter how much has been paid, and
-`withdraw-balance` is refused.
+**2. The seller is not approved.** PayMe pays out only once three documents are
+verified — social ID, bank account, corporate certificate. This does *not* pin
+`wallet_releasable` to zero: the wallet keeps recalculating as sales clear, so
+an unapproved seller can show a full releasable balance and still have
+`withdraw-balance` refused. Read the number as "past its release date", not as
+"withdrawable today" — approval is the second condition.
 
 The second one catches people out because payments work perfectly meanwhile. A
 seller can trade all week and then discover they cannot be paid. Surface the

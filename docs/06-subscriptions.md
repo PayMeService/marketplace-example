@@ -89,10 +89,11 @@ a body to `/resume` does nothing at all — it has to be the header.
 md5(client_key + client_secret + transaction_id + sub_payme_id)
 ```
 
-`transaction_id` here is PayMe's **transaction guid**. On a sale callback the
-identically-named field holds **your order id**, and the hash uses
-`payme_transaction_id` instead. This is the single most confusing thing in the
-whole integration; see [07](07-callbacks-and-signatures.md).
+`transaction_id` here is PayMe's **transaction guid** — the same value a sale
+callback delivers as `payme_transaction_id`, which is why the sale hash names a
+different key. Neither hash ever uses the `transaction_id` you sent on
+`generate-sale`. This is the single most confusing thing in the whole
+integration; see [07](07-callbacks-and-signatures.md).
 
 **`sub-create` legitimately arrives unsigned.** Nothing has been charged, so
 there is no transaction to sign. `CallbacksService` accepts unsigned

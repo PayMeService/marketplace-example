@@ -41,7 +41,7 @@ const request: GenerateSaleRequest = {
   sale_price: 7500,                   // minor units — 75.00
   currency: 'ILS',
   product_name: 'Ceramic mug',
-  transaction_id: sale.id,            // YOUR order id, echoed back on callbacks
+  transaction_id: sale.id,            // YOUR order id — for correlation only
   installments: '1',
   sale_type: 'sale',                  // or 'authorize' — see 05
   sale_payment_method: 'credit-card', // or 'multi' to let the buyer choose
